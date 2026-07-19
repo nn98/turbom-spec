@@ -12,26 +12,37 @@
 
 ### 2026-07-19 (17차) — 스펙 통합: 독립 저장소 `turbom-spec`로 분리
 
-지금까지 스펙이 5곳에 흩어져 있었다: root `spec/`(git 미관리, 사실상의 원본), `spec_before/`(구버전
+지금까지 스펙이 4곳에 흩어져 있었다: root `spec/`(git 미관리, 사실상의 원본), `spec_before/`(구버전
 보존), `server/spec/`(git 추적되지만 2026-07-10~07-16 시점에 정체된 별도 사본), `ter-view/spec/`(대부분
-root와 동일하되 CHANGELOG만 독자적으로 갱신), `ter-view/docs/spec/`(2026-07-16 시점의 죽은 잔여 사본).
+root와 동일하되 CHANGELOG만 독자적으로 갱신, `ter-view/CLAUDE.md`에 문서화되지 않은 비공식 전체 사본).
 분산 관리 중 실제로 이력이 유실된 사례가 발견됨 — root CHANGELOG의 15차("PNU 권위 파일 조인 정정")
 항목이 섹션 헤더 누락으로 16차 블록에 파묻혀 있었고(`ter-view/spec/CHANGELOG.md`에는 정상 헤더로
 남아있어 대조 중 발견, 이번에 헤더 복원으로 수정), `server/spec/backend-spec.md`는 07-19 경매 스파이크
 섹션이 누락된 채 방치돼 있었음.
+
+**`ter-view/docs/spec/`는 통합 대상에서 제외**: 이건 사본이 아니라 `ter-view/CLAUDE.md`가 명시하는
+공식 로컬 미러(`api-spec.md`/`frontend-spec.md` 2개만) — `.github/workflows/spec-drift-check.yml`이
+매일 이 미러를 upstream과 자동 대조해 어긋나면 이슈를 여는 살아있는 장치라 그대로 둔다. 대신 그
+워크플로우가 보던 upstream(`raw.githubusercontent.com/nn98/turbom-server/main/spec/*`)을
+`nn98/turbom-spec`(이 저장소) 루트로 재타게팅했다 — server 쪽 삭제로 그대로 뒀으면 워크플로우가
+조용히 실패했을 것.
 
 **병합 원칙**: 최신 우선(mtime) > 내용 우선(고유하고 유효한 정보면 채택). `api-spec.md`·
 `frontend-spec.md`·`backend-spec.md`·`schema.sql`은 root 버전을 그대로 채택(root가 이후 세션들의
 수정을 계속 반영해 옴 — server/ter-view 사본과의 diff가 대부분 500줄 이상으로 사실상 다른 문서).
 `server/spec` 고유 파일 `FRONTEND-INTEGRATION-CONTRACT.md`(영문 연동계약서, 2026-07-10/11 시점
 스냅샷)는 유지하되 최신화 필요 주석 추가. 각 위치의 아카이브(root `archive/`, `spec_before/`,
-`server/spec/archive/2026-07-10/`, `ter-view/docs/spec/`)는 전부 이 저장소 `archive/` 밑에 날짜별로
-통합 — 병합 대상이 아니라 이미 확정된 스냅샷이므로 그대로 보존.
+`server/spec/archive/2026-07-10/`)는 전부 이 저장소 `archive/` 밑에 날짜별로 통합 — 병합 대상이
+아니라 이미 확정된 스냅샷이므로 그대로 보존. (`ter-view/docs/spec/`의 2026-07-16 시점 스냅샷도
+참고용으로 `archive/2026-07-16-ter-view-docs-spec/`에 남겨뒀다 — 위에서 설명한 대로 원본은 그대로
+살아있고 이건 그 시점의 사본일 뿐.)
 
-**이후 관례**: `server`·`ter-view` 리포는 spec 사본을 만들지 않고 `../turbom-spec/`을 상대경로로
-참조한다(각 리포 CLAUDE.md에 명시). 팀원 전원이 로컬에서 `turbom-server`·`turbom-client`·`turbom-spec`을
-형제 폴더로 clone해 작업하는 걸 전제로 함 — 만약 나중에 GitHub에서 서버/프론트 리포만 단독 clone해야
-하는 상황이 생기면 그때 git submodule로 전환(지금은 YAGNI로 보류).
+**이후 관례**: `server`·`ter-view`의 전체-스펙 사본(`spec/`)은 만들지 않고 `../turbom-spec/`을 상대경로로
+참조한다(각 리포 CLAUDE.md에 명시). `ter-view/docs/spec/`처럼 특정 파일만 골라 로컬 검증용으로 미러링하는
+건 계속 허용 — 그건 이번에 없앤 "전체 사본" 문제와 다른 종류다. 팀원 전원이 로컬에서
+`turbom-server`·`turbom-client`·`turbom-spec`을 형제 폴더로 clone해 작업하는 걸 전제로 함 — 만약
+나중에 GitHub에서 서버/프론트 리포만 단독 clone해야 하는 상황이 생기면 그때 git submodule로 전환
+(지금은 YAGNI로 보류).
 
 ### 2026-07-19 (프론트 세션 발견사항 — 번호 미부여, 백엔드 세션 확인 대기) — 프론트에 `/updates`·`/auctions` 화면 신설, 둘 다 백엔드 API 미의존
 
