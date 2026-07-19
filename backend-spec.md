@@ -320,8 +320,10 @@ SiteQueryService.getSiteDetail(pnu):
 - **실사이트 접근 테스트는 CI에서 절대 실행되지 않음**: `PlaywrightSmokeCheck`·
   `CourtAuctionCollectorManualCheck`는 의도적으로 `Test`/`Tests`/`TestCase` 접미사를 피해 Maven
   Surefire 기본 인클루드 패턴에서 제외된다 — `mvn test -Dtest=클래스명`으로만 수동 실행.
-- **현재 상태(2026-07-19)**: 목록/상세 파서는 실측 캡처 텍스트로 TDD 완료. 수집기는 Playwright로
-  실제 폼을 조작하나 라이브 사이트 실행 시 검색 결과 0건(실 DOM 셀렉터를 이번 세션에 캡처하지
-  못해 발생한 것으로 추정 — 다음 세션 착수 지점).
+- **현재 상태(2026-07-19 갱신)**: 목록/상세 파서는 실측 캡처 텍스트로 TDD 완료. 수집기는 라이브
+  사이트에서 실제로 검증 완료 — 성남시 수정구 상업용 매물 5건을 실제로 수집(주소·감정가 등 실값
+  확인). 이전 기록("검색 결과 0건")은 이 세션에서 원인 4가지를 모두 찾아 수정하며 해소됨 — 상세
+  경위는 `CHANGELOG.md` 18차 참고. `PlaywrightSmokeCheck`/`CourtAuctionCollectorManualCheck`로
+  수동 재현 가능.
 - **`schema.sql`에 `auction_case`/`auction_schedule_entry` 테이블 존재**하지만 자동 적재 경로가
   없어 프로덕션 H2에서도 항상 빈 테이블.
