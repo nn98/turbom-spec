@@ -1,0 +1,87 @@
+# 프론트 제작 프롬프트 (Claude Code용)
+
+아래를 Claude Code에 그대로 전달. 참조 문서: `프론트-연동계약서.md`(계약 요약), `frontend-spec.md`(목데이터·화면 상세), `api-spec.md`(전체 계약).
+
+---
+
+## 프롬프트
+
+넥스트스텝(가칭) 프론트엔드를 만들어줘. 지번 단위 상가 자리의 개업–폐업 이력을 보여주는 예비창업자용 입지 실사 도구다. "중고차 사고이력 조회의 상가 버전".
+
+### 스택 (고정)
+- React 18 + Vite + TypeScript
+- React Router (3개 라우트)
+- TanStack Query (서버 상태)
+- Tailwind CSS
+- react-leaflet + OpenStreetMap 타일 (지도, 키 불필요)
+- 배포 타깃: Vercel
+
+### 목/실 전환 (필수 구조)
+- `VITE_API_BASE_URL` 환경변수. 미설정이면 목(mock) 모드로 완전 동작, 설정 시 실 API.
+- `src/api/client.ts`에서 분기: 목 모드는 300ms 지연 후 `src/mocks/`의 고정 JSON 반환, 실 모드는 `fetch(BASE_URL + path)`.
+- 함수 3개: `search(query)`, `getSite(pnu)`, `getUnit(unitId)`. 시그니처 목/실 동일.
+- **목 데이터는 `frontend-spec.md` 6장의 JSON을 그대로 복사**해서 `src/mocks/`에 넣어라. 자리 2곳·물건 4개·이력 다수 포함, "시흥동 123" 검색은 의도적 빈결과.
+
+### 도메인
+```
+Site(자리, pnu) 1:N Unit(물건, unitId) 1:N Tenancy(이력)
+```
+조회 식별자는 PNU. 지번 검색 → PNU → 물건 → 이력.
+
+### 3화면·3라우트
+
+**① 랜딩 `/`**
+- 히어로: "넥스트스텝" + 태그 "이 자리, 몇 번이나 바뀌었을까". 다크 네이비(#0d1b2a) 배경, 청록(#2f8f7d) 포인트.
+- 검색바(플레이스홀더 "예: 금토동 405") + 예시 칩 3개(금토동 405 / 판교로 22 / 시흥동 123).
+- 검색 결과 후보 카드: 지번주소(강조)·도로명(보조)·`물건 N개 · 누적 폐업 M건`. 클릭 → `/sites/:pnu`.
+- 상태: 초기 / 로딩(스켈레톤) / 빈결과("기록을 찾지 못했어요") / 에러(재시도).
+
+**② 건물 상세 `/sites/:pnu`**
+- `getSite(pnu)` 호출.
+- 지도(react-leaflet): center=site 좌표, 마커 1개. 좌표 null이면 "위치 정보 없음" 플레이스홀더.
+- 요약바: 지번+도로명, `이 건물에서 확인된 물건 N개`.
+- 물건 카드 목록(폐업 많은 순): `label` / 상태 뱃지(영업 청록·공실 회색) / 현재 가게명(+`industryDetail` 있으면 작은 태그) / 미니통계(`N개 거쳐감 · 폐업 M · 평균 K개월`). `locationSource==="sangga_api"`면 "실측 위치" 체크 배지. 클릭 → `/units/:unitId`.
+- disclaimer 하단 상시.
+- 상태: 로딩 / 404(→검색 복귀) / 물건0.
+
+**③ 물건 상세 `/units/:unitId`** (핵심 화면)
+- `getUnit(unitId)` 호출.
+- 상단 통계 카드 4개: 거쳐간 가게 / 폐업 / 평균 영업기간 / 가장 길게·짧게.
+- **운영 타임라인**: 가로 바 형태, 과거(좌)→현재(우), 각 구간 폭 = 생존개월 비례. 구간 클릭 시 상단에 "가게명 · 업종 · N개월" 배지. 업종 색상 범례 하단.
+- **"가게 자세히 보기"** 섹션:
+  - 드롭다운(`TenancySelector`): timeline 각 항목을 `가게명 · 개업~폐업|현재`로 나열, `tenancyId`로 선택. 기본값 = 가장 최근 이력.
+  - 좌 카드(인허가 정보): 상호명 / category(대분류) / subCategory(소분류) / 개업일 / 폐업일 / 영업기간 / 영업상태.
+  - 우 카드(계약·주변상권, `MarketInfoCard`): 헤더에 "예시" 뱃지 고정. 전용면적 / 보증금·월세 / 권리금(0이면 "무") / 일평균 유동인구 / 주변 같은업종 N곳 / 주변 공실률. **하단에 "실 데이터 연동 전 예시값입니다" 캡션 상시**. `sameCategoryNearbyCount`만 실값이라 살짝 구분되는 색 권장.
+- disclaimer 하단.
+- 상태: 로딩 / 404 / 이력0.
+
+### 타입 (그대로 사용)
+`프론트-연동계약서.md`의 TypeScript 인터페이스 블록을 `src/types.ts`로 그대로 가져가라. 특히 **업종 3필드 구분** 주의:
+- `category`: 인허가 대분류(예: 동물, 음식) — 항상 존재, 타임라인 기본 표시
+- `subCategory`: 인허가 소분류(예: 동물미용업, 일반음식점) — 항상 존재, 물건 상세에서 표시
+- `industryDetail`: 상가API 세부업종(영업중 이력만) — **있으면 subCategory 대신 우선 표시**, null이면 subCategory 사용
+- industryDetail이 null인 폐업 이력은 subCategory로 표시하는 게 정상(빈 태그 만들지 마라).
+
+### 주의사항 (데이터 현실)
+- 대부분의 물건은 이력이 여러 개(연대기). 폐업 이력엔 `industryDetail`·`marketInfo` 실값이 없는 게 **정상**(상가API는 현재 스냅샷). 버그 아님.
+- `closedAtEstimated`는 현재 데이터셋에서 항상 false(폐업일자 실값). 처리는 해두되 화면 영향 미미.
+- `marketInfo`의 6필드 중 `sameCategoryNearbyCount`만 실값, 나머지는 목업. 절대 실데이터인 것처럼 표시하지 마라 — "예시" 뱃지·캡션 필수.
+- disclaimer(전체 서비스 고지)와 marketInfo 캡션(카드 목업 고지)은 **다른 것**. 둘 다 노출.
+
+### 디자인 톤
+다크 네이비(#0d1b2a) 헤더 · 청록(#2f8f7d) 포인트 · 강조 오렌지(#b3401e). 타임라인·통계가 주인공, 장식 최소. 상태는 색+텍스트 병기. 모바일 우선, ② 화면 지도 위·목록 아래 세로 스택.
+
+### 완료 기준
+- 목 모드에서 `/` → `/sites/:pnu` → `/units/:unitId` 전 플로우 + 뒤로가기 + 딥링크 동작.
+- 각 화면 로딩/빈결과/에러/404 구현. "시흥동 123" 빈결과 확인.
+- 업종 3필드 조건부 렌더. marketInfo "예시" 표기.
+- disclaimer 3개 조회 화면 상시.
+- `VITE_API_BASE_URL` 설정 시 코드 수정 없이 실 API 스위치.
+
+### 착수 순서
+1. Vite+TS+Router+Query+Tailwind 스캐폰딩, `src/types.ts`, `src/mocks/`, `client.ts`(목/실 분기).
+2. 화면① 랜딩·검색.
+3. 화면② 지도·물건목록.
+4. 화면③ 타임라인·TenancySelector·인허가카드·MarketInfoCard.
+5. 상태(로딩/빈/에러/404)·반응형·톤 마감.
+6. Vercel 배포 준비(env 스위치 확인).
