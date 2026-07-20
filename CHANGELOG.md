@@ -10,6 +10,13 @@
 
 ## 이력
 
+### 2026-07-20 (미해결 기록 — 번호 미부여, 코드 변경 없음) — 업종(BusinessType) 도메인 재설계 확정
+
+집단급식소/위탁급식영업 페어링, 위치미특정 레코드(레코드 단위 판정 — §9 실측대로 카테고리 단위
+아님), businessStatus/licensed_at 신뢰도(§9의 미해결 후보 중 하나를 일반화)를 다루는 `BusinessType`
+도메인 설계를 브레인스토밍으로 확정. 아직 구현 전(writing-plans 단계 예정), 코드 변경 없음. 상세:
+`의사결정-기록.md` §11, `server/docs/superpowers/specs/2026-07-20-business-type-domain-design.md`.
+
 ### 2026-07-20 (19차) — DB를 H2 인메모리 → MySQL로 전환 (`turbom-server`)
 
 158만 행 규모로 커진 시드 데이터를 기동마다 재파싱하던 구조(부팅 ~90초, jar 354MB)를 MySQL 8
