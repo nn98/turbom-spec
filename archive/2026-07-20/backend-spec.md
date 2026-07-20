@@ -262,35 +262,16 @@ SiteQueryService.getSiteDetail(pnu):
 
 ## 7. 스택·배포
 
-- Java 21(정정, 2026-07-20 — 실제로는 이미 21로 운영 중이었으나 스펙이 17로 미반영 상태였음), Spring Boot 3.3.4, Spring Web, Spring Data JPA
-- DB: **MySQL 8**(2026-07-20부터, `turbom-server` 커밋 `d1bff4b`). 배포 서버에 직접 설치한 단일
-  인스턴스, 전용 DB `turbom` + 전용 계정 `turbom_app@localhost`(외부 네트워크 미노출). 앱은
-  `spring.sql.init.mode: never`로 **기동 시 시드 재적재를 하지 않는다**.
-  - **왜 H2 인메모리(아래 이전판 설명)에서 바꿨나**: `spring.sql.init.data-locations`가 기동마다
-    시드 SQL 1,589개 파일(570MB, 약 158만 행)을 처음부터 재파싱해 적재하는 구조라, 데이터가
-    158만 행 규모로 커지면서 배포마다 ~90초 부팅 + jar 354MB가 실질적 병목이 됨.
-  - 시드는 이제 JVM 밖에서 한 번만 처리한다 — `scripts/mysql/mysql-schema.sql`(스키마) +
-    `scripts/mysql/load-new-chunks.sh`(아직 `seed_files_applied` 추적 테이블에 없는 신규 청크만
-    idempotent 적재), 배포 파이프라인(`.github/workflows/ci-cd.yml`)의 deploy job에서 재시작 전에
-    실행.
-  - **실측 결과**: 부팅 90초 → **9초**(신규 jar를 MySQL로 기동해 HikariPool 연결 확인 로그로 검증),
-    jar 354MB → 239MB(`data/**`를 메인 Maven 리소스에서 제외, `h2`는 test scope로 격하 — 남은
-    239MB 중 191MB는 Playwright 브라우저 바이너리 번들이라 이 변경과 무관, 별개 이슈).
-  - **테스트 영향 없음**: `src/test/resources/application.yml`에 기존 H2 인메모리 설정(`mode: always`
-    + `data-locations`)을 그대로 복제 — Maven이 테스트 클래스패스에서 이 설정을 메인보다 우선시켜
-    `mvn test`는 지금도 H2로 79개 테스트 전부 통과(`PersistenceSmokeTest`의 정확한 행수 검증 포함).
-  - **용량 계획 기준 변경**: 아래 이전판의 "AWS 인스턴스 RAM(JVM 힙) 기준" 문장은 더 이상 유효하지
-    않음 — 이제 MySQL 데이터 디렉터리(디스크)가 영속 저장소이고, RAM은 JVM 힙 + MySQL 버퍼풀의
-    통상적인 기준으로 계획한다.
-  - 상세 결정 경위: `의사결정-기록.md` §10.
-  - **(이전판, 참고용 — 2026-07-20 이전 실제 운영 구성)**: DB: H2 인메모리(별도 DB 서버 없음).
-    로컬·AWS 운영 동일 구성 — `spring.sql.init.data-locations`가 기동 시마다
-    `src/main/resources/data/licensed-business-records-*.sql`을 전부 재적재. 서버 프로세스가
-    재시작되면 DB 내용도 그 시점의 SQL 시드 파일 기준으로 다시 만들어짐(영속 디스크 스토리지
-    없음 — PostgreSQL/Railway 전제였던 이전 버전과 가장 큰 차이였음).
+- Java 17, Spring Boot 3.x, Spring Web, Spring Data JPA
+- DB: **H2 인메모리**(별도 DB 서버 없음). 로컬·AWS 운영 동일 구성 — `spring.sql.init.data-locations`가
+  기동 시마다 `src/main/resources/data/licensed-business-records-*.sql`을 전부 재적재한다. 즉
+  **서버 프로세스가 재시작되면 DB 내용도 그 시점의 SQL 시드 파일 기준으로 다시 만들어짐**(영속 디스크
+  스토리지 없음 — PostgreSQL/Railway 전제였던 이전 버전과 가장 큰 차이). 용량 계획은 디스크가 아니라
+  **AWS 인스턴스 RAM**(JVM 힙) 기준으로 해야 함 — 시드 SQL 파일 총 용량이 곧 서버 메모리 예산의
+  하한선.
 - HTTP 클라이언트: Spring RestClient 또는 WebClient(상가 API 호출용)
 - 캐시: Spring Cache(@Cacheable) + Caffeine(인메모리 TTL)
-- 배포: AWS (Spring Boot 서버 프로세스 직접 실행 + MySQL 8을 같은 인스턴스에 직접 설치, 별도 관리형 DB 서비스 없음)
+- 배포: AWS (Spring Boot 서버 프로세스 직접 실행, 별도 관리형 DB 없음)
 - 서킷브레이커(선택): Resilience4j — 상가 API 연속 실패 시 일정 시간 호출 스킵하고 바로 null. 해커톤 스코프엔 과할 수 있어 단순 try-catch+타임아웃으로 시작, 여유되면 추가.
 
 ## 8. 조회 식별자 = PNU (일관성)

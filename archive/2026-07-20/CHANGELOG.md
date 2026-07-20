@@ -10,18 +10,6 @@
 
 ## 이력
 
-### 2026-07-20 (19차) — DB를 H2 인메모리 → MySQL로 전환 (`turbom-server`)
-
-158만 행 규모로 커진 시드 데이터를 기동마다 재파싱하던 구조(부팅 ~90초, jar 354MB)를 MySQL 8
-상시 인스턴스로 전환. `spring.sql.init.mode: never`로 앱 기동에서 시딩을 완전히 분리하고,
-`scripts/mysql/load-new-chunks.sh`가 `seed_files_applied` 추적 테이블 기준으로 신규 청크만
-배포 파이프라인에서 idempotent 적재. 테스트는 `src/test/resources/application.yml`에 기존 H2
-설정을 그대로 복제해 전혀 안 건드림(79개 테스트 그대로 통과). 실측: 부팅 90초→9초, jar
-354MB→239MB(단 191MB는 Playwright 바이너리라 이번 변경과 무관 — "jar가 수 MB로 준다"는 최초
-기대는 실측으로 정정됨), MySQL 행수(1,587,341)가 H2와 일치 확인. 겸사겸사 `Java 17`→`21` 표기
-정정(실제로는 이미 21로 운영 중이었으나 스펙 미반영 상태였음). 커밋: `turbom-server` `d1bff4b`.
-상세: `의사결정-기록.md` §10, `backend-spec.md` §7.
-
 ### 2026-07-19 (미해결 기록 — 번호 미부여, 코드 변경 없음) — 담배소매업 `licensed_at` 신뢰성 이슈
 
 실사례(`4113111600002700009-U1`, 씨유 성남대왕판교로점)에서 `licensed_at`이 브랜드 런칭연도보다
