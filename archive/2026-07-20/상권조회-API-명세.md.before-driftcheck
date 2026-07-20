@@ -56,7 +56,7 @@ Call Back URL: `http://apis.data.go.kr/B553077/api/open/sdsc2/storeListInRadius`
 | indsLclsCd/indsMclsCd/indsSclsCd | 8 | 옵션 | I2/I201/I20102 | **서버 측 업종 필터** — 클라이언트에서 필터링 안 해도 됨(v1 설계보다 효율적) |
 | numOfRows/pageNo/type | — | 옵션 | — | 상동 |
 
-**설계 변경 시사점**: `indsSclsCd` 파라미터로 서버가 직접 필터링해주므로, marketInfo.sameCategoryNearbyCount 계산 시 "전체 반경조회 후 클라이언트에서 indsSclsNm 비교"가 아니라 **요청 시점에 대상 업종의 indsSclsCd를 넘겨서 필터된 결과의 totalCount를 그대로 쓰는 게 더 정확하고 빠르다.** `sangga_client.py`·`backend-spec.md` 6.1절 반영 필요(하단 6장).
+**설계 변경 시사점**: `indsSclsCd` 파라미터로 서버가 직접 필터링해주므로, marketInfo.sameCategoryNearbyCount 계산 시 "전체 반경조회 후 클라이언트에서 indsSclsNm 비교"가 아니라 **요청 시점에 대상 업종의 indsSclsCd를 넘겨서 필터된 결과의 totalCount를 그대로 쓰는 게 더 정확하고 빠르다.** `spec/sangga_client.py`·`backend-spec.md` 6.1절 반영 필요(하단 6장).
 
 ## 3. 응답 스키마 (공식 원문 확정)
 
@@ -80,7 +80,7 @@ Call Back URL: `http://apis.data.go.kr/B553077/api/open/sdsc2/storeListInRadius`
 </response>
 ```
 
-**확정**: `numOfRows`/`pageNo`/`totalCount`는 `body` 하위, `items`와 형제 노드. JSON도 동일 구조(`body.totalCount`, `body.items[]`)로 매핑됨 — `sangga_client.py`가 이미 이 구조를 정확히 가정하고 있었음(우연히 맞았던 것, 이번에 원문으로 확인됨).
+**확정**: `numOfRows`/`pageNo`/`totalCount`는 `body` 하위, `items`와 형제 노드. JSON도 동일 구조(`body.totalCount`, `body.items[]`)로 매핑됨 — `spec/sangga_client.py`가 이미 이 구조를 정확히 가정하고 있었음(우연히 맞았던 것, 이번에 원문으로 확인됨).
 
 ## 4. 응답 필드 전체 (39개, 원문 그대로) — 우리가 쓰는 6개 표시
 

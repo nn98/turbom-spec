@@ -28,7 +28,7 @@ React 18 + Vite + TS · React Router · TanStack Query · Tailwind · react-leaf
 | `/map?q=&pnu=` | ② 지도+건물 상세(물건목록) | `search`(q 있을 때) · `getSite` |
 | `/units/:unitId` | ③ 물건 상세(타임라인+이력상세) | `getUnit` |
 
-2026-07-10(8차) 정정: ②는 경로 파라미터(`/sites/:pnu`)가 아니라 지도 중심 단일 화면(`/map`)에 쿼리스트링(`q`, `pnu`)으로 구현됐다(nextstep-client 실 구현 기준, `프론트-제작-프롬프트.md` "검색 페이지" 절 참조). API 엔드포인트 `GET /api/sites/{pnu}`는 그대로이며, 바뀐 건 프론트 라우팅 방식뿐이다.
+2026-07-10(8차) 정정: ②는 경로 파라미터(`/sites/:pnu`)가 아니라 지도 중심 단일 화면(`/map`)에 쿼리스트링(`q`, `pnu`)으로 구현됐다(nextstep-client 실 구현 기준, `spec/프론트-제작-프롬프트.md` "검색 페이지" 절 참조). API 엔드포인트 `GET /api/sites/{pnu}`는 그대로이며, 바뀐 건 프론트 라우팅 방식뿐이다.
 
 ## 4. 화면 명세
 
@@ -38,7 +38,7 @@ React 18 + Vite + TS · React Router · TanStack Query · Tailwind · react-leaf
 
 ### ② 지도+건물 상세 `/map?q=&pnu=` (v2에서 단순화, 2026-07-10 8차 라우팅 정정)
 
-- 전체화면 지도 위 플로팅 패널 구조(단일 마커 고정 뷰가 아니라, `search(q)` 후보 전체를 마커로 표시하고 `fitBounds`로 한번에 보여줌 — 후보가 여럿이면 세그먼트 탭으로 전환, 좌표null 후보는 지도에서 제외). 상세: `프론트-제작-프롬프트.md` "검색 페이지" 절.
+- 전체화면 지도 위 플로팅 패널 구조(단일 마커 고정 뷰가 아니라, `search(q)` 후보 전체를 마커로 표시하고 `fitBounds`로 한번에 보여줌 — 후보가 여럿이면 세그먼트 탭으로 전환, 좌표null 후보는 지도에서 제외). 상세: `spec/프론트-제작-프롬프트.md` "검색 페이지" 절.
 - 요약바(`물건 N개`) + 물건 목록.
 - 물건 카드: `label`(+ locationSource 배지) / 상태뱃지 / 현재가게명(+industryDetail 태그) / 미니통계. 클릭 → `/units/:unitId`.
 - **v2에 있던 주변상권 패널은 여기 없음** — ③으로 이동했다. ②는 물건 목록에만 집중.

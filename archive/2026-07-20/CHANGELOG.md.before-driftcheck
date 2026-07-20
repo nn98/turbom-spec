@@ -10,29 +10,7 @@
 
 ## 이력
 
-### 2026-07-20 (하우스키핑, 번호 미부여) — 전 스펙 문서 드리프트 점검, 죽은 `spec/` 경로 참조 3건 정정
-
-`api-spec.md`/`backend-spec.md`/`schema.sql`/`의사결정-기록.md`/frontend 계약 문서 전반을 실제
-`turbom-server` 코드와 대조. 살아있는 상호참조 중 2026-07-19 스펙 통합 이전 경로(`spec/` 접두)가
-안 바뀐 채 남아있던 3건을 고침(`api-spec.md`의 `spec/backend-spec.md` → `backend-spec.md`,
-`frontend-spec.md`의 `spec/프론트-제작-프롬프트.md` → `프론트-제작-프롬프트.md` 2곳,
-`상권조회-API-명세.md`의 `spec/sangga_client.py` → `sangga_client.py` 3곳). CHANGELOG 안의 같은
-문자열은 당시 시점을 서술하는 역사적 인용이라 그대로 둠.
-
-**더 큰 필드 단위 드리프트 발견, 아직 미수정**: `api-spec.md`/`frontend-spec.md`의 JSON
-예시·TS 타입이 실제 `ApiDtos.java`보다 최소 한 세대 뒤처져 있음 —
-`parsedFloor`/`parsedUnitNo`/`parseConfidence`(units[]·unit 양쪽), `SiteCandidateDto.currentSubCategory`가
-실 코드엔 있는데 두 캐노니컬 문서 어디에도 없음. `frontend-spec.md`의 TS `SiteDetail` 타입은
-`api-spec.md`가 이미 문서화한 `noStorefrontRegistrations`조차 빠져있어 두 캐노니컬 문서끼리도
-어긋나 있음(`FRONTEND-INTEGRATION-CONTRACT.md`가 자체적으로 "2026-07-10/11 시점에 멈춤"이라고
-밝힌 것과는 별개 문제 — 그건 이미 자기 오래됨을 인지하고 있음). `api-spec.md`의 `GET /api/units`
-JSON 예시는 `category`를 `"음식_일반음식점"`(대분류_소분류 결합 문자열)로 보여주는데, 바로 아래
-필드 표는 `category`/`subCategory`를 별개 필드로 설명함 — 예시 자체가 자기 문서의 표와 어긋남
-(실제 코드는 표가 맞음, 예시가 틀림). `schema.sql`(site/unit/tenancy_record 3테이블 정규화 모델)은
-`backend-spec.md`가 이미 서술하는 실제 모델(단일 `licensed_business_record` 플랫 테이블 + 조회
-시점 도메인 조립)과 완전히 다른 구조 — 언제 이렇게 갈라졌는지 이력이 없음. `ter-view`의
-`spec-drift-check.yml`이 매일 `api-spec.md`/`frontend-spec.md`를 대조한다는 점(`CLAUDE.md` §6)과
-프론트 쪽 영향 범위 때문에 이번엔 고치지 않고 사용자 확인 후 처리하기로 함.
+### 2026-07-20 (미해결 기록 — 번호 미부여, 코드 변경 없음) — 업종(BusinessType) 도메인 재설계 확정
 
 집단급식소/위탁급식영업 페어링, 위치미특정 레코드(레코드 단위 판정 — §9 실측대로 카테고리 단위
 아님), businessStatus/licensed_at 신뢰도(§9의 미해결 후보 중 하나를 일반화)를 다루는 `BusinessType`
