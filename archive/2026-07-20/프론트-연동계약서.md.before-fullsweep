@@ -40,13 +40,11 @@ interface Candidate {
   longitude: number | null;
   unitCount: number;      // 이 자리의 물건 수
   closedCount: number;    // 이 자리 누적 폐업 수
-  currentSubCategory: string | null;  // 2026-07-20 뒤늦게 문서화. 현재 영업 중인 물건 중 하나의 소분류, 전체 공실이면 null
 }
 interface SearchResponse { candidates: Candidate[]; }
 
 // ── ② site 상세 ──
 type LocationSource = "license" | "sangga_api" | "overlap_inferred";
-type ParseConfidence = "HIGH" | "LOW";
 interface UnitSummary {
   unitId: string;
   label: string;                       // '단일 점포' | 호수 | '물건 A'
@@ -57,19 +55,11 @@ interface UnitSummary {
   averageSurvivalMonths: number | null;
   industryDetail: string | null;       // 상가API 세부업종(현재 영업 물건만)
   locationSource: LocationSource;
-  parsedFloor: string | null;          // 2026-07-20 뒤늦게 문서화. HIGH일 때만 신뢰
-  parsedUnitNo: string | null;
-  parseConfidence: ParseConfidence;
-}
-interface NoStorefrontRegistration {  // 2026-07-18 API 도입, 이 계약서엔 뒤늦게 문서화
-  businessName: string; category: string; subCategory: string;
-  licensedAt: string; closedAt: string | null; status: string;
 }
 interface SiteDetail {
   site: { pnu: string; jibunAddress: string; roadAddress: string;
           latitude: number | null; longitude: number | null; };
   units: UnitSummary[];
-  noStorefrontRegistrations: NoStorefrontRegistration[];
   disclaimer: Disclaimer;
 }
 
@@ -82,7 +72,6 @@ interface Statistics {
   longestSurvivalMonths: number | null;
   shortestSurvivalMonths: number | null;
 }
-interface CategoryCount { code: string; name: string; count: number; ratio: number; }  // ratio 0~1, 2026-07-20 뒤늦게 문서화
 interface MarketInfo {
   isPlaceholder: boolean;              // 현재 항상 true
   leaseAreaSqm: number | null;         // 목업(소스 없음)
@@ -90,29 +79,26 @@ interface MarketInfo {
   monthlyRentKrw: number | null;       // 목업
   keyMoneyKrw: number | null;          // 목업
   dailyFloatingPopulation: number | null; // 목업
-  sameCategoryNearbyCount: number | null; // 실값(상가API), 실패 시 null
+  sameCategoryNearbyCount: number | null; // 유일한 실값(상가API), 실패 시 null
   vacancyRatePercent: number | null;   // 목업
   asOf: string;
-  totalStoreCount: number | null;      // 실값(상가API), 2026-07-20 뒤늦게 문서화 — 반경 내 전체 점포 수(업종 필터 없음)
-  categoryBreakdown: CategoryCount[];   // 실값(상가API), 2026-07-20 뒤늦게 문서화 — 반경 내 대분류별 개수/비중
 }
 interface Tenancy {
   tenancyId: string;
   businessName: string;
-  category: string;              // 인허가 대분류(예: 음식) — 항상 존재
+  category: string;              // 인허가 대분류(예: 음식_일반음식점) — 항상 존재
   subCategory: string;           // 인허가 소분류(예: 일반음식점) — 항상 존재
   industryDetail: string | null; // 상가API 세부업종 — 영업중 이력만
   licensedAt: string;            // YYYY-MM-DD
   closedAt: string | null;       // null = 영업중
-  status: string;                // 2026-07-20 정정 — 고정 3값 아님. "영업"(정규화) 외엔 원본 상태명 원문 그대로("취소/말소/만료/정지/중지" 등)
+  status: "영업" | "폐업" | "휴업";
   survivalMonths: number | null;
   closedAtEstimated: boolean;    // 현재 데이터셋은 폐업일자 실값이라 항상 false
   enrichmentSource: EnrichmentSource;
   marketInfo: MarketInfo;
 }
 interface UnitDetail {
-  unit: { unitId: string; label: string; jibunAddress: string; roadAddress: string;
-          parsedFloor: string | null; parsedUnitNo: string | null; parseConfidence: ParseConfidence; };
+  unit: { unitId: string; label: string; jibunAddress: string; roadAddress: string; };
   statistics: Statistics;
   timeline: Tenancy[];           // licensedAt 오름차순(과거→현재)
   disclaimer: Disclaimer;

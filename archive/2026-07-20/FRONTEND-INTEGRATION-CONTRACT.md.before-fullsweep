@@ -1,16 +1,16 @@
 # Turbom Frontend Integration Contract
 
-> **Refreshed 2026-07-20** (previously frozen at the 2026-07-10/11 session —
-> see git history for that version). English translation of
-> `프론트-연동계약서.md`, kept in sync with `api-spec.md`/`backend-spec.md`.
-> This session's audit found this file had actually stayed *more* current
-> than the Korean docs on `totalStoreCount`/`categoryBreakdown`/`status`
-> typing since 2026-07-10/11 — those three were backfilled into the Korean
-> docs this session; `noStorefrontRegistrations` (2026-07-18) was the one
-> gap this file had, now added below.
+> **Staleness note (2026-07-19):** frozen at the 2026-07-10/11 session below —
+> not updated since. `api-spec.md`/`backend-spec.md`/`프론트-연동계약서.md`
+> are the current source of truth; treat this file as historical unless it's
+> refreshed.
 
-Full detail lives in `api-spec.md`/`backend-spec.md`; this is the one-page
-essentials for frontend integration.
+English translation of `프론트-연동계약서.md`, updated to match the current
+implementation (2026-07-10/11 session: `totalStoreCount`/`categoryBreakdown`
+added to `marketInfo`, `status` corrected to not be a fixed 3-value enum,
+`parsedFloor`/`parsedUnitNo`/`parseConfidence` documented). Full detail
+lives in `api-spec.md`/`backend-spec.md`; this is the one-page essentials
+for frontend integration.
 
 ## Domain (what the frontend needs to know)
 
@@ -50,7 +50,6 @@ interface Candidate {
   longitude: number | null;
   unitCount: number;      // number of units at this site
   closedCount: number;    // cumulative closures at this site
-  currentSubCategory: string | null;  // backfilled 2026-07-20 — subCategory of any currently-operating unit; null if fully vacant
 }
 interface SearchResponse { candidates: Candidate[]; }
 
@@ -71,15 +70,10 @@ interface UnitSummary {
   parsedUnitNo: string | null;
   parseConfidence: ParseConfidence;    // trust `label`'s parsed detail only when "HIGH"
 }
-interface NoStorefrontRegistration {  // added 2026-07-18 to the API, backfilled here 2026-07-20
-  businessName: string; category: string; subCategory: string;
-  licensedAt: string; closedAt: string | null; status: string;
-}
 interface SiteDetail {
   site: { pnu: string; jibunAddress: string; roadAddress: string;
           latitude: number | null; longitude: number | null; };
   units: UnitSummary[];
-  noStorefrontRegistrations: NoStorefrontRegistration[];
   disclaimer: Disclaimer;
 }
 

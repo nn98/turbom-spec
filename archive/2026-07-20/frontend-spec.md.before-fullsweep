@@ -55,7 +55,6 @@ React 18 + Vite + TS · React Router · TanStack Query · Tailwind · react-leaf
 - 선택 시 2단 카드 레이아웃:
   - **좌: 인허가 정보** — 상호명·업종·개업일자·폐업일자·영업기간·영업상태. 전부 이미 `timeline[]`에 있는 필드 그대로(신규 API 불필요).
   - **우: 계약·주변상권 정보** — `marketInfo` 객체 렌더링. 카드 헤더 옆에 "예시" 뱃지 상시(참고 이미지와 동일). 필드: 전용면적 / 보증금·월세(슬래시로 함께 표기) / 권리금(0이면 "무") / 일평균 유동인구 / 주변 같은업종(N)곳 / 주변 공실률(%). 카드 최하단에 항상 "실 데이터 연동 전 예시값입니다" 캡션 — **`isPlaceholder` 여부와 무관하게 상시 노출**(현재는 항상 true라 사실상 상시).
-  - **2026-07-20 참고**: `marketInfo`에 `totalStoreCount`/`categoryBreakdown`(둘 다 실값)도 있는데 이 카드 디자인엔 아직 반영 안 돼 있음 — 위 6필드 UX가 확정된 뒤에 추가된 필드라 별도 배치 결정이 필요(예: "반경 내 전체 N곳, 이 중 음식업 M곳" 같은 보조 텍스트). 디자인 결정 전까지는 §5 타입에만 존재.
   - `sameCategoryNearbyCount`만 실값일 수 있으므로, 이 필드 하나는 다른 5개와 시각적으로 살짝 구분(예: 색을 다르게)하는 걸 권장하되 필수는 아님.
 
 disclaimer 하단. 상태: 로딩/404/이력0.
@@ -91,8 +90,6 @@ interface SiteDetail {
 type EnrichmentSource = "sangga_api" | "license_only";
 interface Statistics { totalTenancyCount: number; closedCount: number; averageSurvivalMonths: number|null; longestSurvivalMonths: number|null; shortestSurvivalMonths: number|null; }
 
-interface CategoryCount { code: string; name: string; count: number; ratio: number; }  // ratio 0~1
-
 interface MarketInfo {
   isPlaceholder: boolean;
   leaseAreaSqm: number|null;
@@ -100,18 +97,15 @@ interface MarketInfo {
   monthlyRentKrw: number|null;
   keyMoneyKrw: number|null;
   dailyFloatingPopulation: number|null;
-  sameCategoryNearbyCount: number|null;  // 실값
+  sameCategoryNearbyCount: number|null;  // 유일한 실값 후보
   vacancyRatePercent: number|null;
   asOf: string;
-  totalStoreCount: number|null;          // 실값, 2026-07-20 뒤늦게 문서화 — 반경 내 전체 점포 수(업종 필터 없음)
-  categoryBreakdown: CategoryCount[];     // 실값, 2026-07-20 뒤늦게 문서화 — 반경 내 대분류별 개수/비중
 }
 
 interface Tenancy {
   tenancyId: string;
   businessName: string; category: string; subCategory: string; industryDetail: string|null;
-  licensedAt: string; closedAt: string|null;
-  status: string;  // 2026-07-20 정정 — 고정 3값 아님. "영업"(정규화됨) 외엔 원본 상태명 원문("취소/말소/만료/정지/중지" 등)이 그대로 옴
+  licensedAt: string; closedAt: string|null; status: "영업"|"폐업"|"휴업";
   survivalMonths: number|null; closedAtEstimated: boolean; enrichmentSource: EnrichmentSource;
   marketInfo: MarketInfo;
 }

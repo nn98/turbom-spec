@@ -35,7 +35,7 @@
               ┌─────────────▼──────────┐  ┌─────────▼───────────────────┐
               │  개폐업 조회 (DB)       │  │  상권 조회 (외부 API 실시간) │
               │  TenancyQueryService   │  │  MarketInfoService          │
-              │  → JPA Repository      │  │  → SanggaApiClient (HTTP)    │
+              │  → JPA Repository      │  │  → SangaApiClient (HTTP)    │
               │  → H2(인메모리)         │  │  → 소상공인 상가정보 API     │
               │  [읽기 전용, 빠름]      │  │  [네트워크, 느림, 실패 가능] │
               └────────────────────────┘  └─────────────────────────────┘
@@ -67,7 +67,7 @@ com.nextstep
 │   └── market/     MarketInfo, NearbyCategoryCount (외부 데이터의 도메인 표현)
 └── infra
     ├── persistence/  JPA 엔티티·리포지토리 (개폐업 조회)
-    └── sangga/       SanggaApiClient, 좌표변환, 응답 매핑 (상권 호출)
+    └── sangga/       SangaApiClient, 좌표변환, 응답 매핑 (상권 호출)
 ```
 
 의존 방향: web → application → domain ← infra. domain은 Spring·JPA·HTTP 전부 비의존(순수 자바). MarketInfo는 외부에서 왔지만 domain에 그 개념(값객체)만 두고, 실제 호출은 infra.sangga가 담당.
@@ -199,25 +199,16 @@ MarketInfo
 ### 4.2 상권 조회 파이프라인 (외부 API, 실시간)
 
 ```
-PNU + 좌표 + 대상 업종(인허가 소분류)
-  → MarketInfoService.fetch(pnu, lon, lat, subCategory)
-    → IndustryCategoryMapper.toSanggaCategoryCode(subCategory)  // 인허가 소분류 → 상가 대분류(indsLclsCd) 매핑, 매핑 없으면 Optional.empty()
-    → SanggaApiClient.countInRadiusByCategory(lon, lat, radius=300, indsLclsCd)
+PNU + 좌표 + 대상 업종(소분류코드)
+  → MarketInfoService.fetch(pnu, coordinate, indsSclsCd)
+    → SangaApiClient.fetchRadiusSameCategoryCount(cx, cy, radius=300, indsSclsCd)
       [HTTP 호출, storeListInRadius(#10) — storeZoneInRadius(#2)와 혼동 금지]
-    → 서버가 indsLclsCd로 이미 필터링한 응답의 totalCount를 그대로 사용
+    → 서버가 indsSclsCd로 이미 필터링한 응답의 totalCount를 그대로 사용
     → MarketInfo 값객체 조립 (실값 1 + 목업 6)
-  → 반환 (매핑 없거나 실패 시 sameCategoryNearbyCount=null인 MarketInfo)
+  → 반환 (실패 시 sameCategoryNearbyCount=null인 MarketInfo)
 ```
 
-- **정정(2026-07-20, 클래스/메서드명 및 필터 단위 수정)**: 클래스명은 `SanggaApiClient`(g 두 개,
-  이전 표기 `SangaApiClient`는 오타), 메서드는 `countInRadiusByCategory`. 클라이언트에서 응답
-  items를 받아 하나씩 비교하는 방식이 아니라, 요청 시점에 **서버 측 필터링**을 걸고 그 결과의
-  `totalCount`를 그대로 쓰는 것까지는 원래 서술이 맞다. 다만 필터 파라미터는 `indsSclsCd`(소분류)가
-  아니라 **`indsLclsCd`(대분류)**다 — 인허가 소분류(행안부 체계)와 상가API 소분류(소상공인
-  시장진흥공단 체계)는 서로 다른 분류라 공식 매핑표가 없고, 그래서 `IndustryCategoryMapper`가
-  인허가 소분류 136개를 상가 대분류 10개(G2/I1/I2/L1/M1/N1/P1/Q1/R1/S2)로 손수 매핑해 그
-  대분류로만 필터링한다(`상권조회-API-명세.md` §2.2 참조). `numOfRows=1`로 최소 페이로드만
-  요청하는 것도 그대로 맞음.
+- **정정(공식 활용가이드 hwp 원문 확인, `상권조회-API-명세.md` 참조)**: 클라이언트에서 응답 items를 받아 `indsSclsNm == category`로 하나씩 비교하는 방식이 아니라, 요청 시점에 `indsSclsCd` 파라미터로 **서버 측 필터링**을 걸고 그 결과의 `totalCount`를 그대로 쓴다. `numOfRows=1`로 최소 페이로드만 요청 — 개별 item 파싱조차 불필요. 정확도(서버가 필터링하므로 클라이언트 로직 버그 여지 없음)와 성능(응답 크기 최소화) 둘 다 이득.
 - 오퍼레이션 이름 함정: "반경내 상권조회"(`storeZoneInRadius`, #2)는 상권 폴리곤 경계 데이터를 주는 **다른 오퍼레이션**. 우리가 쓰는 건 "반경내 상가업소조회"(`storeListInRadius`, #10).
 - radius 상한 2000m(공식 문서 명시). 우리 고정값 300m는 여유 있음.
 - 외부 HTTP. 타임아웃(예: 3초), 재시도(2회), 실패 시 예외 삼키고 null 반환.
@@ -322,7 +313,7 @@ SiteQueryService.getSiteDetail(pnu):
 2. domain 순수 모델(Site/Unit/Tenancy/값객체/UnitStatistics) + 단위 테스트.
 3. infra.persistence: JPA 엔티티·리포지토리, 개폐업 조회 파이프라인(4.1).
 4. TenancyQueryService + SiteQueryService(상권 없이 개폐업만) → search·sites 엔드포인트 완성.
-5. infra.sangga: SanggaApiClient(HTTP), 좌표변환, MarketInfoService(4.2).
+5. infra.sangga: SangaApiClient(HTTP), 좌표변환, MarketInfoService(4.2).
 6. SiteQueryService에 상권 조합(4.3, try-catch 격리) → units 엔드포인트 완성.
 7. 캐시·타임아웃·AWS 배포.
 

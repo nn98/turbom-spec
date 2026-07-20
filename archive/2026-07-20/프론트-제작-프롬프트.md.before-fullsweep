@@ -2,12 +2,7 @@
 
 아래를 Claude Code에 그대로 전달. 참조 문서: `프론트-연동계약서.md`(계약 요약), `frontend-spec.md`(목데이터·화면 상세), `api-spec.md`(전체 계약), `frontent-UI-design-prompt.md`(디자인/리포트 상세 — Loveable용 원본, 이 문서에 병합 반영됨).
 
-**병합 이력(2026-07-10)**: 기존 프롬프트(v1) + `frontent-UI-design-prompt.md`(디자인 프롬프트) + nextstep-client 실제 검색 화면 리버스 프롬프팅, 3개를 병합. 원칙: v1 구조를 최대한 유지하고 디자인 프롬프트로 보강. 단 `## 검색 페이지`는 디자인 프롬프트의 다단계(지번입력→부번선택→층호목록) 서술 대신 nextstep-client에서 이미 검증된 지도 기반 UX로 교체. 디자인 프롬프트 하단의 Supabase Edge Function·IndexedDB·API키 직접입력·프로젝트명 "코스잇다" 섹션은 우리 스택(Spring Boot+Railway, 서버키는 env var)과 무관한 다른 템플릿 잔재로 판단해 전부 제외. 근거: `CHANGELOG.md` 7차 이후 대화 기록.
-
-**2026-07-20 정정 — "Railway"는 더 이상 스택이 아님**: 2026-07-20에 DB를 H2 인메모리에서
-MySQL 8(배포 서버에 직접 설치)로 전환하면서, Railway는 원래도 이 프로젝트에서 실제로 안 쓰인
-지 오래됐고(`backend-spec.md` §7) 이번 전환으로 더 확실히 무관해졌다. 프론트 관점에서 영향 없음
-(API 계약 그대로) — 백엔드 배포 방식 서술이라 그대로 남겨도 되지만 오해 방지용으로 표시.
+**병합 이력(2026-07-10)**: 기존 프롬프트(v1) + `frontent-UI-design-prompt.md`(디자인 프롬프트) + nextstep-client 실제 검색 화면 리버스 프롬프팅, 3개를 병합. 원칙: v1 구조를 최대한 유지하고 디자인 프롬프트로 보강. 단 `## 검색 페이지`는 디자인 프롬프트의 다단계(지번입력→부번선택→층호목록) 서술 대신 nextstep-client에서 이미 검증된 지도 기반 UX로 교체. 디자인 프롬프트 하단의 Supabase Edge Function·IndexedDB·API키 직접입력·프로젝트명 "코스잇다" 섹션은 우리 스택(Spring Boot+Railway, 서버키는 env var)과 무관한 다른 템플릿 잔재로 판단해 전부 제외. 근거: `spec/CHANGELOG.md` 7차 이후 대화 기록.
 
 ---
 
@@ -124,19 +119,9 @@ disclaimer 하단 상시. 상태: 로딩 / 404 / 이력0.
 
 ## 리포트 확장 필드 (신규 — api-spec.md에 없는 목업)
 
-**2026-07-20 정정 — `반경 내 전체 점포수`/`업종 구성`은 더 이상 목업 대상이 아니다.** 이 문서를 쓸
-당시엔 `marketInfo`의 실값이 `sameCategoryNearbyCount` 하나뿐이었지만, 이후 백엔드가
-`totalStoreCount`(반경 내 전체 점포 수)와 `categoryBreakdown`(대분류별 개수·비중, `{code, name,
-count, ratio}[]`)을 실제 상가API 반경조회에서 같이 받아와 `marketInfo`에 추가했다(`api-spec.md`
-§③ `marketInfo` 표 참고, 2026-07-20 문서화). 그러니:
-- **아래 "리포트 확장 필드"에서 `totalNearbyStoreCount`·`industryBreakdown`은 만들지 말 것** —
-  각각 `marketInfo.totalStoreCount`·`marketInfo.categoryBreakdown`을 그대로 쓰면 실값이다. "예시"
-  뱃지도 뗄 것(`sameCategoryNearbyCount`와 동일하게 실값 취급).
-- `competitionScore`(경쟁도 게이지)·`recentOpenCount`(최근개업수)·`districtTags`(상권 특징 태그)는
-  여전히 소스가 없다(`의사결정-기록.md` §6 확정 사실 그대로) — 아래 방침대로 계속 목업.
+디자인 프롬프트의 "주변 상권 분석"·"통계(주변 상권)"·"핵심요약(반경 내 점포수)"·"체크리스트(경쟁점포수 등)"가 요구하는 다음 필드들은 **현재 확정된 `api-spec.md`의 `marketInfo`(실값은 `sameCategoryNearbyCount` 하나뿐)에 없다**. 데이터셋·상가API로 실측 불가능하다는 게 이미 `의사결정-기록.md` §6에서 확정된 사실이라, 지금 백엔드를 확장하지 않는다 — **차후 기능 보강 대상**이다.
 
-아래는 여전히 목업이 필요한 나머지 필드(`competitionScore`/`recentOpenCount`/`districtTags`)에
-대한 방침이다:
+지금은 다음 방침으로 목업을 만든다:
 
 - `api-spec.md`의 `MarketInfo` 타입은 건드리지 않는다(계약 오염 방지).
 - `src/types.ts`에 프론트 전용 확장 타입을 별도로 둔다(예: `MarketAnalysisMock`) — `industryBreakdown`(업종별 점포수), `competitionScore`(0~100), `totalNearbyStoreCount`, `recentOpenCount`, `districtTags`(string[]). "집계기준일"은 새 필드를 만들지 말고 기존 `marketInfo.asOf`를 그대로 재사용(같은 시점 기준이라는 걸 보여주는 게 목적이라 굳이 중복 필드 불필요).

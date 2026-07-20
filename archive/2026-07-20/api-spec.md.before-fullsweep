@@ -201,12 +201,7 @@
         "dailyFloatingPopulation": 21400,
         "sameCategoryNearbyCount": 14,
         "vacancyRatePercent": 6.2,
-        "asOf": "2026-07-04",
-        "totalStoreCount": 132,
-        "categoryBreakdown": [
-          { "code": "I2", "name": "음식", "count": 41, "ratio": 0.31 },
-          { "code": "G2", "name": "소매", "count": 28, "ratio": 0.21 }
-        ]
+        "asOf": "2026-07-04"
       }
     },
     {
@@ -230,12 +225,7 @@
         "dailyFloatingPopulation": 21400,
         "sameCategoryNearbyCount": 11,
         "vacancyRatePercent": 6.2,
-        "asOf": "2026-07-04",
-        "totalStoreCount": 132,
-        "categoryBreakdown": [
-          { "code": "I2", "name": "음식", "count": 41, "ratio": 0.31 },
-          { "code": "G2", "name": "소매", "count": 28, "ratio": 0.21 }
-        ]
+        "asOf": "2026-07-04"
       }
     }
   ],
@@ -276,10 +266,8 @@
 | sameCategoryNearbyCount | number | **실제 — 상가API 반경조회** | 자리 좌표 기준 반경 내 동일 업종 점포 수. `isPlaceholder`와 무관하게 항상 실값 시도, 실패 시에만 null |
 | vacancyRatePercent | number\|null | **없음(목업)** | 주변 공실률 |
 | asOf | string(date) | — | 기준일 |
-| totalStoreCount | number\|null | **실제 — 상가API 반경조회, 2026-07-20 뒤늦게 문서화** | 같은 반경(300m) 내 업종 필터 없는 전체 점포 수. 실패 시 null |
-| categoryBreakdown | array | **실제, 2026-07-20 뒤늦게 문서화** | 반경 내 상가API 대분류별 개수·비중. 각 항목 `{code, name, count, ratio}`(`ratio`=0~1). 실패 시 빈 배열 |
 
-`sameCategoryNearbyCount`는 선택된 이력이 어느 것이든 **현재 시점 기준 동일 값**이 나간다 — 상가API가 현재 스냅샷만 주기 때문에 과거 이력을 조회해도 "그 시절 주변 상황"은 알 수 없다. 이 값이 과거를 재현한 게 아니라 "지금 기준"이라는 걸 화면에 명시해야 한다(marketInfo.asOf가 그 역할). `totalStoreCount`/`categoryBreakdown`도 같은 반경조회 호출에서 나오는 실값이라 동일하게 "지금 기준"이다.
+`sameCategoryNearbyCount`는 선택된 이력이 어느 것이든 **현재 시점 기준 동일 값**이 나간다 — 상가API가 현재 스냅샷만 주기 때문에 과거 이력을 조회해도 "그 시절 주변 상황"은 알 수 없다. 이 값이 과거를 재현한 게 아니라 "지금 기준"이라는 걸 화면에 명시해야 한다(marketInfo.asOf가 그 역할).
 
 - unitId 없음: 404 `UNIT_NOT_FOUND`
 - `timeline`은 `licensedAt` 오름차순.
