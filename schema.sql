@@ -1,84 +1,92 @@
--- 넥스트스텝 v5 DDL (PostgreSQL / H2 호환)
--- 실제 데이터셋(gyeonggi_seongnam_licensed_10y_address_units, 19컬럼) 확정 반영.
--- v4 대비: 가정이 아니라 실제 CSV 컬럼으로 매핑 확정.
---   - PNU 100% 채움 확인 → 직접 사용
---   - 폐업일자 실컬럼 확인 → closed_at 실값
---   - 업종명 전부 공백 확인 → 제거. 대분류/소분류 컬럼 분리(원본 행안부_대분류_소분류 구조)
---     category=대분류(타임라인 표시), sub_category=소분류(상세 표시), industryDetail=상가API 세부(우선)
---   - 주소분리여부 신뢰 불가(호수 있어도 false) 확인 → 대부분 자리=물건 1:1
---   - 주소보정성공여부로 마스킹/보정실패 레코드 품질 관리
--- 상권 정보는 DB 없음(실시간 API + 인메모리 캐시). v4 원칙 유지.
+-- 넥스트스텝 v6 DDL — 실제 구현과 일치하는 캐노니컬 스키마 (2026-07-20 정정)
+--
+-- v5(정규화 3테이블: site/unit/tenancy_record)는 스펙 작성 단계의 설계였고, 실제 구현은
+-- 단일 플랫 테이블(licensed_business_record) + 조회 시점 도메인 조립(Site/Unit/Tenancy는
+-- turbom-server의 애플리케이션 계층이 이 테이블에서 매번 계산)으로 갔다 — 주소분리여부를
+-- 신뢰할 수 없어 DB 레벨로 물건을 미리 쪼개봐야 의미가 없었고(backend-spec.md §3.1),
+-- CSV 원본을 그대로 적재하면 별도 ETL 없이 시딩이 끝나기 때문(YAGNI). 이 간극은 실제로
+-- 언제 갈라졌는지 이력이 남아있지 않다(turbom-server 클론이 얕은 클론이라 커밋 이력 확인
+-- 불가) — `의사결정-기록.md` §12 참고. 이 파일은 이제부터 실제 배포 스키마
+-- (turbom-server의 src/main/resources/schema.sql, scripts/mysql/mysql-schema.sql)를 그대로 따른다.
+--
+-- Site/Unit/Tenancy는 DB 테이블이 아니라 도메인 계층 개념이다 — 상세: backend-spec.md §3.
+-- 이 테이블 하나가 Tenancy 각 행(=인허가 1건)에 대응하고, Site는 pnu로, Unit은 조회 시점에
+-- 상세주소 파싱 결과로 그룹핑된다.
+
+DROP TABLE IF EXISTS auction_schedule_entry;
+DROP TABLE IF EXISTS auction_case;
+DROP TABLE IF EXISTS licensed_business_record;
+
+CREATE TABLE licensed_business_record (
+    id                     BIGINT PRIMARY KEY,          -- CSV: id(원본 유지)
+    pnu                    VARCHAR(19) NOT NULL,         -- CSV: PNU(100% 채움, 유도 불필요) = Site 키
+    category               VARCHAR(50) NOT NULL,         -- CSV: 대분류(예: 동물)
+    sub_category           VARCHAR(50) NOT NULL,         -- CSV: 소분류(예: 동물미용업)
+    license_no             VARCHAR(50) NOT NULL,         -- CSV: 관리번호
+    business_name          VARCHAR(200) NOT NULL,        -- CSV: 사업장명
+    business_type          VARCHAR(100),                 -- CSV: 업태명
+    business_status        VARCHAR(20) NOT NULL,         -- CSV: 영업상태명(5버킷 원문)
+    status_detail_code     VARCHAR(10),                  -- CSV: 상세영업상태코드
+    status_detail          VARCHAR(30),                  -- CSV: 상세영업상태명
+    licensed_at            DATE NOT NULL,                 -- CSV: 인허가일자
+    closed_at              DATE,                          -- CSV: 폐업일자(공백=영업중)
+    road_address           VARCHAR(300),                  -- CSV: 도로명주소
+    jibun_address          VARCHAR(300) NOT NULL,         -- CSV: 지번주소
+    address_separated      BOOLEAN NOT NULL,              -- CSV: 주소분리여부(실측상 거의 항상 false)
+    address_corrected      BOOLEAN,                       -- CSV: 주소보정성공여부(마스킹 품질 지표)
+    parsed_building_name   VARCHAR(200),                  -- 조회 시점 아님, 적재 시 AddressDetailParser로 파싱
+    parsed_floor           VARCHAR(20),
+    parsed_unit_no         VARCHAR(20),
+    parse_confidence       VARCHAR(10),                   -- HIGH | LOW
+    parse_method           VARCHAR(20),                   -- REGEX | UNPARSED | NONE
+    local_gov_code         VARCHAR(10) NOT NULL,          -- CSV: 개방자치단체코드
+    original_x             DECIMAL(18,9),                 -- CSV: 원본좌표X(EPSG:5174) — WGS84 변환은 조회 시점(infra)
+    original_y             DECIMAL(18,9),                 -- CSV: 원본좌표Y(EPSG:5174)
+    CONSTRAINT chk_license_date_order CHECK (closed_at IS NULL OR closed_at >= licensed_at)
+);
+
+CREATE INDEX idx_license_record_pnu ON licensed_business_record(pnu);
+CREATE INDEX idx_license_record_jibun ON licensed_business_record(jibun_address);
+CREATE INDEX idx_license_record_road ON licensed_business_record(road_address);
+CREATE INDEX idx_license_record_status ON licensed_business_record(business_status);
+CREATE INDEX idx_license_record_licensed ON licensed_business_record(licensed_at);
 
 -- ============================================================
--- 개폐업 정보 (DB 영속화 — 정제 적재됨, 이 백엔드는 조회만)
+-- 아래 두 테이블은 공개 API 계약(api-spec.md)과 무관한 실험적/비공개 파이프라인이다.
+-- 법원경매 데이터 수집 스파이크용 — 상세: backend-spec.md §11, 의사결정-기록.md §8.
+-- 자동 적재 경로가 없어 프로덕션에서도 항상 빈 테이블일 수 있다.
 -- ============================================================
 
--- 여러 Spring 테스트 컨텍스트(@SpringBootTest 애노테이션 조합이 다르면 별도 ApplicationContext 생성)가
--- 이름 있는 인메모리 H2(DB_CLOSE_DELAY=-1)를 공유할 때 sql.init.mode: always가 재실행돼도
--- "Table already exists"로 깨지지 않도록 자식→부모 역순 DROP으로 멱등화.
-DROP TABLE IF EXISTS ingestion_exclusion_log CASCADE;
-DROP TABLE IF EXISTS tenancy_record CASCADE;
-DROP TABLE IF EXISTS unit CASCADE;
-DROP TABLE IF EXISTS site CASCADE;
-
-CREATE TABLE site (
-    pnu               VARCHAR(19) PRIMARY KEY,   -- CSV: PNU (100% 채움 확인)
-    jibun_address     VARCHAR(200) NOT NULL,     -- CSV: 지번주소
-    road_address      VARCHAR(200),              -- CSV: 도로명주소
-    longitude         DECIMAL(10,7),             -- CSV: 원본좌표X → WGS84 변환 후 저장
-    latitude          DECIMAL(10,7),             -- CSV: 원본좌표Y → WGS84 변환 후 저장
-    original_x        DECIMAL(18,9),             -- 원본 투영좌표 보존(변환 검증용)
-    original_y        DECIMAL(18,9),
-    address_corrected BOOLEAN,                    -- CSV: 주소보정성공여부 (마스킹 품질 지표)
-    local_gov_code    VARCHAR(10)                -- CSV: 개방자치단체코드
+CREATE TABLE auction_case (
+    id                         BIGINT PRIMARY KEY AUTO_INCREMENT,
+    case_number                VARCHAR(50) NOT NULL,
+    item_number                INT NOT NULL,
+    court                      VARCHAR(100),
+    division_name              VARCHAR(100),
+    property_type              VARCHAR(100),
+    jibun_address              VARCHAR(300),
+    appraisal_value_krw        DECIMAL(19,0),
+    minimum_sale_price_krw     DECIMAL(19,0),
+    bid_deposit_krw            DECIMAL(19,0),
+    bidding_method             VARCHAR(50),
+    sale_date                  VARCHAR(20),
+    filed_date                 VARCHAR(20),
+    auction_start_date         VARCHAR(20),
+    claim_deadline             VARCHAR(20),
+    claim_amount_krw           DECIMAL(19,0),
+    appraisal_summary          VARCHAR(4000)
 );
 
-CREATE INDEX idx_site_jibun ON site(jibun_address);
-
--- 물건(Unit). 이 데이터셋은 주소분리여부가 대부분 false라 자리=물건 1:1이 기본.
--- 한 PNU에 여러 Tenancy가 시간순으로 쌓이는 게 정상(연대기의 핵심).
-CREATE TABLE unit (
-    unit_id         VARCHAR(40) PRIMARY KEY,     -- {pnu}-U{seq}, 미분리 시 {pnu}-U1
-    site_pnu        VARCHAR(19) NOT NULL REFERENCES site(pnu),
-    label           VARCHAR(80) NOT NULL,        -- 호수 분리 시 그 값, 기본 '단일 점포'
-    location_source VARCHAR(20) NOT NULL DEFAULT 'license'
-                    -- license | sangga_api | overlap_inferred
+CREATE TABLE auction_schedule_entry (
+    id                         BIGINT PRIMARY KEY AUTO_INCREMENT,
+    auction_case_id            BIGINT NOT NULL REFERENCES auction_case(id),
+    schedule_date               VARCHAR(20),
+    schedule_time               VARCHAR(20),
+    schedule_type                VARCHAR(100),
+    location                    VARCHAR(300),
+    minimum_price_krw           DECIMAL(19,0),
+    result                      VARCHAR(100)
 );
-
-CREATE INDEX idx_unit_site ON unit(site_pnu);
-
--- 이력(Tenancy). 한 물건에 시간순으로 들어온 각 사업장 = 연대기의 각 칸.
-CREATE TABLE tenancy_record (
-    id              BIGINT PRIMARY KEY,          -- CSV: id (원본 유지)
-    unit_id         VARCHAR(40) NOT NULL REFERENCES unit(unit_id),
-    license_no      VARCHAR(50),                 -- CSV: 관리번호
-    business_name   VARCHAR(200) NOT NULL,       -- CSV: 사업장명
-    category        VARCHAR(50) NOT NULL,        -- CSV: 대분류 (예: 동물, 음식)
-    sub_category    VARCHAR(50) NOT NULL,        -- CSV: 소분류 (예: 동물미용업, 일반음식점)
-    licensed_at     DATE NOT NULL,               -- CSV: 인허가일자
-    closed_at       DATE NULL,                   -- CSV: 폐업일자 (공백=영업중)
-    status          VARCHAR(10) NOT NULL,        -- CSV: 영업상태 → {영업,폐업,휴업} 정규화
-    status_detail   VARCHAR(30),                 -- CSV: 상세영업상태
-    CONSTRAINT chk_date_order CHECK (closed_at IS NULL OR closed_at >= licensed_at)
-);
-
-CREATE INDEX idx_tenancy_unit ON tenancy_record(unit_id);
-CREATE INDEX idx_tenancy_status ON tenancy_record(status);
-CREATE INDEX idx_tenancy_licensed ON tenancy_record(licensed_at);
-
--- 적재 이상치 로그 (마스킹/보정실패/좌표변환실패 기록 — 데이터 정직성 근거).
--- 적재 자체는 이 백엔드 밖(배치)이나 로그 조회·리포트용으로 스키마에 둠.
-CREATE TABLE ingestion_exclusion_log (
-    id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    source_id    BIGINT,                         -- 원본 tenancy id
-    reason_code  VARCHAR(40) NOT NULL,
-        -- ADDRESS_MASKED | ADDRESS_CORRECT_FAIL | PNU_INVALID | COORD_CONVERT_FAIL | DATE_ORDER
-    raw_snippet  VARCHAR(500),
-    logged_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- 통계는 조회 시 계산(자리당 이력 수십 건 이하 예상). 성능 이슈 시에만 아래 활성화.
--- CREATE TABLE unit_statistics ( ... );
 
 -- ============================================================
 -- 상권 정보: DB 테이블 없음. 실시간 외부 API(소상공인 상가정보) + 인메모리 캐시(Caffeine TTL).

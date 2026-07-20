@@ -62,21 +62,28 @@ disclaimer 하단. 상태: 로딩/404/이력0.
 ## 5. 타입
 
 ```ts
-interface Candidate { pnu: string; jibunAddress: string; roadAddress: string; latitude: number|null; longitude: number|null; unitCount: number; closedCount: number; }
+interface Candidate { pnu: string; jibunAddress: string; roadAddress: string; latitude: number|null; longitude: number|null; unitCount: number; closedCount: number; currentSubCategory: string|null; }
 interface SearchResponse { candidates: Candidate[]; }
 
 interface Disclaimer { dataAsOf: string; note: string; }
 
 type LocationSource = "license" | "sangga_api" | "overlap_inferred";
+type ParseConfidence = "HIGH" | "LOW";
 interface UnitSummary {
   unitId: string; label: string;
   currentBusinessName: string|null; currentStatus: "영업"|"공실";
   totalTenancyCount: number; closedCount: number; averageSurvivalMonths: number|null;
   industryDetail: string|null; locationSource: LocationSource;
+  parsedFloor: string|null; parsedUnitNo: string|null; parseConfidence: ParseConfidence;
+}
+interface NoStorefrontRegistration {
+  businessName: string; category: string; subCategory: string;
+  licensedAt: string; closedAt: string|null; status: string;
 }
 interface SiteDetail {
   site: { pnu: string; jibunAddress: string; roadAddress: string; latitude: number|null; longitude: number|null; };
   units: UnitSummary[];
+  noStorefrontRegistrations: NoStorefrontRegistration[];
   disclaimer: Disclaimer;
 }
 
@@ -103,7 +110,8 @@ interface Tenancy {
   marketInfo: MarketInfo;
 }
 interface UnitDetail {
-  unit: { unitId: string; label: string; jibunAddress: string; roadAddress: string; };
+  unit: { unitId: string; label: string; jibunAddress: string; roadAddress: string;
+    parsedFloor: string|null; parsedUnitNo: string|null; parseConfidence: ParseConfidence; };
   statistics: Statistics; timeline: Tenancy[]; disclaimer: Disclaimer;
 }
 
@@ -111,6 +119,11 @@ interface ApiError { error: string; message: string; }
 ```
 
 ## 6. 목 데이터셋
+
+**2026-07-20 참고**: 아래 목 데이터는 §5 타입 갱신(2026-07-20) 이전에 작성돼 `parsedFloor`/
+`parsedUnitNo`/`parseConfidence`/`currentSubCategory`/`noStorefrontRegistrations`가 예시에 없다.
+목 클라이언트 구현 시엔 §5 타입 기준으로 이 필드들을 채워 넣을 것 — 값 자체는 임의로 지어도
+무방(HIGH 신뢰도, 적당한 층/호 값 등).
 
 ### search / getSite — v2와 동일 구조(neighborhood 필드만 제거)
 

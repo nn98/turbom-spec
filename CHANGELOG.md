@@ -10,6 +10,37 @@
 
 ## 이력
 
+### 2026-07-20 (20차) — 캐노니컬 문서를 실제 구현 기준으로 정정: `schema.sql` 재작성 + API 필드 3건 보강
+
+19차 이후 진행한 전 스펙 문서 드리프트 점검(아래 하우스키핑 항목)에서 발견한 것 중, 실제 코드와
+서로 다른 캐노니컬 문서끼리도 어긋나 있던 부분을 **실물 기준으로** 정정(CLAUDE.md §5의 "문서와
+실물이 어긋나면 실물이 이긴다" 원칙 적용).
+
+**`schema.sql` 전면 재작성**: v5(site/unit/tenancy_record 정규화 3테이블)는 스펙 작성 단계의
+설계였고, 실제 구현은 처음부터 단일 플랫 테이블(`licensed_business_record`, CSV 컬럼 그대로) +
+조회 시점 도메인 조립(Site/Unit/Tenancy는 turbom-server가 매번 계산)으로 갔다. 이 간극이 정확히
+언제 생겼는지는 이력이 없다(turbom-server 클론이 얕은 클론이라 커밋 이력 확인 불가) —
+`backend-spec.md` §3이 이미 이 실제 모델을 서술하고 있었는데 `schema.sql`만 안 갱신된 채였다.
+v6은 turbom-server의 실제 `src/main/resources/schema.sql`/`scripts/mysql/mysql-schema.sql`을
+그대로 반영(`licensed_business_record` + 비공개 실험 테이블 `auction_case`/`auction_schedule_entry`).
+상세 근거: `의사결정-기록.md` §12.
+
+**API 스펙 변경점 — `api-spec.md`/`frontend-spec.md`, 프론트 영향 있음**:
+1. `GET /api/sites/search`의 `candidates[]`에 `currentSubCategory`(string\|null) 추가 — 실제
+   `ApiDtos.SiteCandidateDto`엔 있었는데 문서화가 안 돼 있었음.
+2. `GET /api/sites/{pnu}`의 `units[]`와 `GET /api/units/{unitId}`의 `unit`에
+   `parsedFloor`/`parsedUnitNo`/`parseConfidence` 3필드 추가 — 실제 `ApiDtos`엔 있었는데 문서화가
+   안 돼 있었음. `parseConfidence`가 `"HIGH"`일 때만 나머지 두 필드·`label`의 파싱 결과를 신뢰할 것.
+3. `frontend-spec.md`의 TS `SiteDetail` 타입에 `noStorefrontRegistrations`(api-spec.md는 이미
+   2026-07-18부터 문서화돼 있었으나 frontend-spec.md TS 타입엔 반영 안 돼 있었음) 추가.
+4. `api-spec.md`의 `GET /api/units` JSON 예시가 `category`를 `"음식_일반음식점"`(대분류_소분류
+   결합 문자열)로 잘못 보여주고 있었음 — 같은 문서 바로 아래 필드 표는 애초에 `category`/
+   `subCategory`를 별개 필드로 정확히 설명하고 있었고, 실제 코드도 별개 필드다. 예시만 고침.
+
+이 중 1~3번은 실제 API 응답 필드가 바뀌는 게 아니라(이미 이렇게 나가고 있었음) **문서만 코드를
+뒤늦게 따라잡는 것** — 프론트가 이미 실 API를 호출 중이라면 동작 변화 없음, 다만 `ter-view`의
+`spec-drift-check.yml`이 이 커밋으로 대조 대상 필드가 늘어난 걸 감지할 수 있으니 참고.
+
 ### 2026-07-20 (하우스키핑, 번호 미부여) — 전 스펙 문서 드리프트 점검, 죽은 `spec/` 경로 참조 3건 정정
 
 `api-spec.md`/`backend-spec.md`/`schema.sql`/`의사결정-기록.md`/frontend 계약 문서 전반을 실제
@@ -19,20 +50,9 @@
 `상권조회-API-명세.md`의 `spec/sangga_client.py` → `sangga_client.py` 3곳). CHANGELOG 안의 같은
 문자열은 당시 시점을 서술하는 역사적 인용이라 그대로 둠.
 
-**더 큰 필드 단위 드리프트 발견, 아직 미수정**: `api-spec.md`/`frontend-spec.md`의 JSON
-예시·TS 타입이 실제 `ApiDtos.java`보다 최소 한 세대 뒤처져 있음 —
-`parsedFloor`/`parsedUnitNo`/`parseConfidence`(units[]·unit 양쪽), `SiteCandidateDto.currentSubCategory`가
-실 코드엔 있는데 두 캐노니컬 문서 어디에도 없음. `frontend-spec.md`의 TS `SiteDetail` 타입은
-`api-spec.md`가 이미 문서화한 `noStorefrontRegistrations`조차 빠져있어 두 캐노니컬 문서끼리도
-어긋나 있음(`FRONTEND-INTEGRATION-CONTRACT.md`가 자체적으로 "2026-07-10/11 시점에 멈춤"이라고
-밝힌 것과는 별개 문제 — 그건 이미 자기 오래됨을 인지하고 있음). `api-spec.md`의 `GET /api/units`
-JSON 예시는 `category`를 `"음식_일반음식점"`(대분류_소분류 결합 문자열)로 보여주는데, 바로 아래
-필드 표는 `category`/`subCategory`를 별개 필드로 설명함 — 예시 자체가 자기 문서의 표와 어긋남
-(실제 코드는 표가 맞음, 예시가 틀림). `schema.sql`(site/unit/tenancy_record 3테이블 정규화 모델)은
-`backend-spec.md`가 이미 서술하는 실제 모델(단일 `licensed_business_record` 플랫 테이블 + 조회
-시점 도메인 조립)과 완전히 다른 구조 — 언제 이렇게 갈라졌는지 이력이 없음. `ter-view`의
-`spec-drift-check.yml`이 매일 `api-spec.md`/`frontend-spec.md`를 대조한다는 점(`CLAUDE.md` §6)과
-프론트 쪽 영향 범위 때문에 이번엔 고치지 않고 사용자 확인 후 처리하기로 함.
+**같이 발견한 더 큰 필드/스키마 단위 드리프트는 20차로 정정**(위 항목 참고) — `FRONTEND-INTEGRATION-CONTRACT.md`가
+자체적으로 "2026-07-10/11 시점에 멈춤"이라 밝힌 건 이번 정정과 별개(그건 이미 자기 오래됨을
+인지하고 있어 그대로 둠).
 
 집단급식소/위탁급식영업 페어링, 위치미특정 레코드(레코드 단위 판정 — §9 실측대로 카테고리 단위
 아님), businessStatus/licensed_at 신뢰도(§9의 미해결 후보 중 하나를 일반화)를 다루는 `BusinessType`

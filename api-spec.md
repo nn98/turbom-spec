@@ -58,7 +58,8 @@
       "latitude": 37.4012,
       "longitude": 127.1045,
       "unitCount": 3,
-      "closedCount": 8
+      "closedCount": 8,
+      "currentSubCategory": "일반음식점"
     }
   ]
 }
@@ -68,6 +69,9 @@
 `units`가 0개인 자리(무점포업종만 있는 PNU, `noStorefrontRegistrations[]` 참고)는 후보에서 제외한다 —
 **2026-07-18부터**. 실사례: 금토동 390-11/436-3/517-7(고압가스업·통신판매업만 있음)이 지도 마커만
 뜨고 실제 가게 정보가 없는 버그로 발견됨.
+
+`currentSubCategory`(string\|null, **2026-07-20 뒤늦게 문서화 — 코드엔 이미 있던 필드**): 현재
+영업 중인 Unit 중 아무 곳이나 하나의 소분류. 전체 공실이면 null.
 
 ---
 
@@ -93,7 +97,10 @@
       "closedCount": 4,
       "averageSurvivalMonths": 27,
       "industryDetail": "후라이드/양념치킨",
-      "locationSource": "sangga_api"
+      "locationSource": "sangga_api",
+      "parsedFloor": "1",
+      "parsedUnitNo": "101",
+      "parseConfidence": "HIGH"
     }
   ],
   "noStorefrontRegistrations": [
@@ -126,6 +133,9 @@
 | averageSurvivalMonths | number\|null | 폐업 이력만 평균 |
 | industryDetail | string\|null | 세부 업종(상가API indsSclsNm). 공실·보강실패 시 null |
 | locationSource | `"license"`\|`"sangga_api"`\|`"overlap_inferred"` | label 출처 |
+| parsedFloor | string\|null | **2026-07-20 뒤늦게 문서화** — 원본 상세주소에서 파싱된 층. 없으면 null |
+| parsedUnitNo | string\|null | **2026-07-20 뒤늦게 문서화** — 파싱된 호실 번호. 없으면 null |
+| parseConfidence | `"HIGH"`\|`"LOW"` | **2026-07-20 뒤늦게 문서화** — `HIGH`일 때만 `parsedFloor`/`parsedUnitNo`/`label`의 파싱 결과를 신뢰할 것 |
 
 ### `noStorefrontRegistrations[]` 필드 — **2026-07-18 신규**
 
@@ -157,7 +167,10 @@
     "unitId": "4113310300104050001-U1",
     "label": "1층 101호",
     "jibunAddress": "경기도 성남시 수정구 금토동 405-1",
-    "roadAddress": "경기도 성남시 수정구 대왕판교로 815"
+    "roadAddress": "경기도 성남시 수정구 대왕판교로 815",
+    "parsedFloor": "1",
+    "parsedUnitNo": "101",
+    "parseConfidence": "HIGH"
   },
   "statistics": {
     "totalTenancyCount": 5,
@@ -170,7 +183,8 @@
     {
       "tenancyId": "t-1001",
       "businessName": "고기굽는집",
-      "category": "음식_일반음식점",
+      "category": "음식",
+      "subCategory": "일반음식점",
       "industryDetail": null,
       "licensedAt": "2013-05-02",
       "closedAt": "2017-01-10",
@@ -193,7 +207,8 @@
     {
       "tenancyId": "t-1005",
       "businessName": "치킨나라",
-      "category": "음식_일반음식점",
+      "category": "음식",
+      "subCategory": "일반음식점",
       "industryDetail": "후라이드/양념치킨",
       "licensedAt": "2023-01-15",
       "closedAt": null,
@@ -220,6 +235,9 @@
   }
 }
 ```
+
+`unit.parsedFloor`/`parsedUnitNo`/`parseConfidence`(**2026-07-20 뒤늦게 문서화**): §②의 `units[]`와
+동일한 필드·의미(`parseConfidence`가 `HIGH`일 때만 신뢰).
 
 ### `timeline[]` 필드 (신규 부분)
 
