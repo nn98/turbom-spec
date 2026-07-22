@@ -10,6 +10,24 @@
 
 ## 이력
 
+### 2026-07-22 (25차) — 대형 상가/시장에서 동시영업 다른 상호가 한 Unit으로 뭉치는 문제 수정 (`turbom-server`)
+
+실측 확인: 가락시장·AK플라자 지하1층·롯데백화점 지층·백현동 541 지하1층 등에서, 파싱된 층/호
+정보가 없거나 동일해서(`TenancyQueryService.unitKey()`의 `FLOOR::`/원문텍스트 분기) 서로 다른
+수백 개 사업자가 한 `Unit`으로 잘못 합쳐지고 있었다(가락시장: 동시영업 690개가 1개 Unit).
+신설 `OccupancySpan`(`domain.unit`, JPA 비의존)으로 "같은 그룹 안 다른 상호가 겹치는 기간에
+영업 중이었다"(물리적으로 불가능 → 그룹이 잘못됨)를 감지하고, 감지되면 2차(지번/도로명 원문
+텍스트) → 그래도 겹치면 3차(상호명)로 재분리한다. 구체적 호실번호가 있는 그룹(`UNIT::` 분기)은
+대상에서 제외 — 실제 문제 사례 전부 호실번호 없는 경우였고, 있는데 겹치는 건 폐업신고 누락일
+가능성이 높음(기존 회귀 테스트 2개도 이 전제로 작성돼 있어 그대로 통과 유지). 배포 후 실측:
+가락시장(`1171010700006000000`) unitCount 1→1488, 창곡동 559-4(`4113110800105590004`) 4개로
+분리 확인. **알려진 한계**: 창곡동 사례에서 위탁급식영업/집단급식소 관련인허가 페어링(§11)도
+주소 텍스트가 같으면 상호명 기준으로 갈라짐 — 의도된 스코프 밖(BusinessType 재설계 §11 미구현
+상태와 통합 안 함), `RelatedLicenseLinker` 구현 시 재검토. 설계: `docs/superpowers/specs/2026-07-22-unit-overlap-split-design.md`,
+계획: `docs/superpowers/plans/2026-07-22-unit-overlap-split.md`. 신규 9개 테스트(`OccupancySpanTest`
+5 + `TenancyQueryServiceTest` 3 + 기존 fixture 정정 1) 포함 전체 98개 테스트 통과 확인 후 배포.
+커밋: `turbom-server` `3fda31d`(OccupancySpan), `35f870c`(그룹핑 로직).
+
 ### 2026-07-22 (24차) — 주소 검색을 토큰 AND 매칭으로 전환 (`turbom-server`)
 
 프론트 요청 반영: `GET /api/sites/search`가 `query` 전체를 `jibunAddress`/`roadAddress`에 대한
