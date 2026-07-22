@@ -10,23 +10,6 @@
 
 ## 이력
 
-### 2026-07-22 (22차) — `GET /api/sites/search`의 candidates에 유닛별 층/호 파싱정보 추가 (`turbom-server`)
-
-프론트(`turbom-client`) 요청 반영: 검색 결과가 PNU(자리) 단위 row라 건물별로 묶은 뒤 층/호로
-재분리하려면 자리마다 상세 API(`GET /api/sites/{pnu}`)를 추가 호출해야 했음. `candidates[]`에
-`units[]`(축약판 — `unitId`/`parsedFloor`/`parsedUnitNo`/`parseConfidence` 4필드만) 배열을 신설해
-추가 호출 없이 검색 결과만으로 층/호 재분리가 가능하게 함. `api-spec.md`/`frontend-spec.md`/
-`프론트-연동계약서.md` 세 문서 모두 반영. 기존 79개+신규 1개, 80개 테스트 전부 통과 확인 후 배포.
-커밋: `turbom-server` `bf64fad`.
-
-**같이 요청됐다가 보류된 것 — `buildingId`**: 같은 요청에 "동일 건물 판별용 안정 키"로
-`buildingId` 필드도 요청됐으나, 이 요청의 배경 문서(`ter-view/docs/superpowers/specs/2026-07-18-site-entity-similarity-design.md`)를
-따라가 보니 이미 15차("PNU 권위 파일 조인 정정")에서 "유사 항목 매칭으로 우회할 문제가 아니라
-진짜 데이터 중복(산여부 자리만 다른 PNU)"이라고 뒤집혔던 결론과 정면으로 배치됨. 게다가 15차 당시
-9만여 건 스캔 기준 1,630쌍이던 산여부 충돌이 지금 158만 건 기준 **8,121쌍**으로 늘어나 있어(권위
-파일 조인이 이후 커진 데이터엔 재적용 안 된 것으로 추정), `buildingId`를 새로 얹기 전에 이 데이터
-중복부터 원인 치료하기로 사용자와 합의. 진행 상황은 `의사결정-기록.md` §14 참고(작업 중).
-
 ### 2026-07-20 (21차) — 전 문서 완전 스윕: 상권API 필터 단위 정정 + marketInfo 실값 2필드 백필 + 프론트 계약서 동기화
 
 20차·하우스키핑에 이어 turbom-spec의 나머지 문서(상권조회-API-명세.md, 인허가-데이터-필드명세-v4.md,

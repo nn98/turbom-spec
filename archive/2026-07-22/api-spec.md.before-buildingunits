@@ -59,11 +59,7 @@
       "longitude": 127.1045,
       "unitCount": 3,
       "closedCount": 8,
-      "currentSubCategory": "일반음식점",
-      "units": [
-        { "unitId": "4113310300104050001-U1", "parsedFloor": "1", "parsedUnitNo": "101", "parseConfidence": "HIGH" },
-        { "unitId": "4113310300104050001-U2", "parsedFloor": "2", "parsedUnitNo": "201", "parseConfidence": "HIGH" }
-      ]
+      "currentSubCategory": "일반음식점"
     }
   ]
 }
@@ -76,12 +72,6 @@
 
 `currentSubCategory`(string\|null, **2026-07-20 뒤늦게 문서화 — 코드엔 이미 있던 필드**): 현재
 영업 중인 Unit 중 아무 곳이나 하나의 소분류. 전체 공실이면 null.
-
-`candidates[].units[]`(array, **2026-07-22 신규**): `units[]`(§②)의 축약판 — `unitId`/`parsedFloor`/
-`parsedUnitNo`/`parseConfidence` 4필드만. 검색 결과 단계에서 건물별로 묶고 그 안에서 층/호로
-재분리하려는 프론트 워크플로우를 위해, 자리마다 상세 API(`GET /api/sites/{pnu}`)를 추가 호출하지
-않아도 되게 검색 응답에 바로 실어준다. `parseConfidence`가 `"HIGH"`일 때만
-`parsedFloor`/`parsedUnitNo`를 신뢰할 것(§②와 동일 규칙).
 
 ---
 

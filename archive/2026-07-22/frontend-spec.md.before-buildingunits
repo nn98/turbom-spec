@@ -63,8 +63,7 @@ disclaimer 하단. 상태: 로딩/404/이력0.
 ## 5. 타입
 
 ```ts
-interface CandidateUnit { unitId: string; parsedFloor: string|null; parsedUnitNo: string|null; parseConfidence: ParseConfidence; }  // 2026-07-22 신규
-interface Candidate { pnu: string; jibunAddress: string; roadAddress: string; latitude: number|null; longitude: number|null; unitCount: number; closedCount: number; currentSubCategory: string|null; units: CandidateUnit[]; }
+interface Candidate { pnu: string; jibunAddress: string; roadAddress: string; latitude: number|null; longitude: number|null; unitCount: number; closedCount: number; currentSubCategory: string|null; }
 interface SearchResponse { candidates: Candidate[]; }
 
 interface Disclaimer { dataAsOf: string; note: string; }
