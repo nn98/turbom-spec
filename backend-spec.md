@@ -183,7 +183,7 @@ MarketInfo
 
 ```
 지번주소/PNU 입력
-  → PnuResolver: 검색어를 PNU로 해석 (지번 LIKE 검색 or PNU 직접)
+  → PnuResolver: 검색어를 PNU로 해석 (지번 토큰 AND 검색 or PNU 직접, 2026-07-22부터 — `api-spec.md` ① 매칭 방식 참조)
   → TenancyQueryService.findBySite(pnu)
     → SiteRepository.findByPnu (JPA)
     → UnitRepository.findBySitePnu
@@ -244,7 +244,7 @@ SiteQueryService.getSiteDetail(pnu):
 
 | 엔드포인트 | 개폐업(DB) | 상권(API) |
 |---|---|---|
-| `GET /api/sites/search` | 지번 LIKE 검색으로 PNU 후보 | 사용 안 함 |
+| `GET /api/sites/search` | 지번 토큰 AND 검색으로 PNU 후보(2026-07-22부터) | 사용 안 함 |
 | `GET /api/sites/{pnu}` | Site+Units+각 Unit 통계 | 사용 안 함(물건 목록만) |
 | `GET /api/units/{unitId}` | Unit+Tenancies+통계 | **각 이력에 marketInfo 실시간 조립** |
 
