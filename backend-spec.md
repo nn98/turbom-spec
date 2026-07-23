@@ -89,45 +89,25 @@ Site
 - `Pnu` 값객체: 19자리 형식 검증, 앞 10자리(법정동코드) 추출 메서드. 인허가 데이터에 PNU가 직접 오므로 유도 불필요, 검증만.
 - `Coordinate` 값객체: 좌표계 변환은 infra에서 끝내고 domain엔 WGS84(위경도)만.
 
-#### 업종 분류(`BusinessType`)와 위치미특정 (2026-07-20, `NoStorefrontSubCategories`에서 재설계)
+#### 무점포업종 분리 (`NoStorefrontSubCategories`)
 
 인허가 원본은 (category, subCategory)별로 "층/호 정보 없음" 비율이 실측 기준 뚜렷하게 이분됨 —
 통신판매업·방문판매업·전화권유판매업·의료기기판매(임대)업 등 47개 (category, subCategory) 조합은
 90% 이상이 상세주소 없음(업종 특성상 자가/사무실 주소로 신고 가능, 물리적 점포 개념이 약함).
 정상 매장업종(일반음식점 20.4%, 휴게음식점 17.5% 등)은 이 비율이 낮고 순수 개별 데이터 누락임.
 
-`BusinessTypeRegistry.lookup(category, subCategory).locationCertainty()`가 이 47개 목록을 `LOCATED`/
-`NO_PHYSICAL_STORE` 두 값으로 관리(구 `NoStorefrontSubCategories.isNoStorefront`와 값·의미 동일,
-클래스만 이관). 판정은 **레코드 단위가 아니라 같은 PNU 내 같은 businessName 단위** — 한 상호명이
-무점포 후보 업종과 정상 매장업종(또는 실제 층/호 정보가 있는 레코드) 라이선스를 동시에 갖고 있으면
-그 상호명의 레코드 전부를 매장으로 취급한다(`SitePartitioner`). 상호명 전체가 무점포 후보 업종이면서
-층/호 정보도 전혀 없을 때만 `Site.noStorefrontRegistrations`로 분류, Unit 그룹핑 자체를 안 거침.
+`NoStorefrontSubCategories.isNoStorefront(category, subCategory)`가 이 47개 목록을 정적으로 관리.
+판정은 **레코드 단위가 아니라 같은 PNU 내 같은 businessName 단위** — 한 상호명이 무점포 후보
+업종과 정상 매장업종(또는 실제 층/호 정보가 있는 레코드) 라이선스를 동시에 갖고 있으면(예:
+"동물병원 더 하임"이 동물병원+동물미용업+동물위탁관리업을 동시 보유) 그 상호명의 레코드 전부를
+매장으로 취급한다 — 부가 허가만 따로 떼서 이력을 쪼개지 않기 위함. 상호명 전체가 무점포 후보
+업종이면서 층/호 정보도 전혀 없을 때만 `Site.noStorefrontRegistrations`로 분류, Unit 그룹핑(§7
+물건 분리 규칙) 자체를 안 거침 — `TenancyQueryService.mergedTenancies()`(businessName + gap 90일
+병합)만 적용.
 
-**위치미특정(`unlocatedRegistrations`, 신규)**: 담배소매업(84.5%가 층/호 정보 없음, 90% 임계값
-미달이라 위 무점포 목록엔 없음)처럼 카테고리 자체는 매장이 있는데 개별 레코드에 상세주소가 전혀
-없는 경우가 있다 — 이건 업종 속성이 아니라 **레코드 단위 데이터 완비 여부**라, `LocationIdentity`가
-매장/무점포 판정과 별개로 판단한다(`UnitGrouper`). 상세: `의사결정-기록.md` §9·§11,
-`server/docs/superpowers/specs/2026-07-20-business-type-domain-design.md`.
-
-**관련 인허가 페어링(신규)**: 집단급식소/위탁급식영업처럼 같은 물건에서 서로 다른 인허가로 뜨는
-경우, `BusinessTypeRegistry`가 두 (category, subCategory)를 서로의 `relatedTypeKeys`로 등록해두면
-같은 Unit 안에서 `RelatedLicenseLinker`가 자동으로 묶는다(`Unit.relatedLicenseGroups`). 구현 중
-발견: `UnitGrouper`의 겹침 기반 충돌감지/재분리(캐노니컬: `의사결정-기록.md` §16)가 원래
-`BusinessTypeRegistry`를 몰라서, 겹치는 기간에 영업 중인 등록된 관련쌍(예: 집단급식소+위탁급식업)을
-`RelatedLicenseLinker`가 한 Unit 안에서 묶기도 전에 서로 다른 Unit으로 갈라놓는 문제가 있었다 —
-`UnitGrouper`가 이제 `BusinessTypeRegistry`를 받아 `isContended()` 판정에서 등록된 관련쌍을
-겹침 검사 대상에서 제외하도록 수정됨(§16의 "알려진 한계" 항목이 이걸로 해소됨).
-
-**상태 신뢰도(신규)**: 담배소매업은 담배사업법상 거리제한(50~100m) 때문에 폐업신고를 미루는
-"알박기"와, 세무서 폐업신고와 지자체 담배소매인 폐업신고 이원화로 인한 누락이 흔하고, 별개로
-인허가 자체가 상호 변경과 무관하게 승계되는 경우도 있어(§9) `licensed_at`이 실제 개업일보다 훨씬
-이를 수 있다. `BusinessType.reliabilitySignal(businessName, licensedAt, context)`가 같은 자리에
-이 레코드보다 늦게 시작한 다른 상호가 있으면 `NEEDS_VERIFICATION`을 반환 — API 응답의
-`timeline[].reliabilitySignal`/`reliabilitySignalReason`으로 노출(참고 신호, 정밀 판정 아님).
-
-이 47개 목록은 90% 임계값을 기계적으로 적용한 결과이지 수작업 큐레이션이 아님. 표본이 작은
-항목(n≤5건)은 통계적으로 약한 신호 — 향후 실사례로 오분류가 확인되면 개별 조정. 새 원본 파일 추가 시
-이 임계값 기준으로 재계산해서 목록을 갱신할 것.
+이 목록은 90% 임계값을 기계적으로 적용한 결과이지 수작업 큐레이션이 아님. 표본이 작은 항목(n≤5건)은
+통계적으로 약한 신호 — 향후 실사례로 오분류가 확인되면 개별 조정. 새 원본 파일 추가 시 이 임계값
+기준으로 재계산해서 목록을 갱신할 것.
 
 ### 3.2 Unit (물건)
 

@@ -10,6 +10,20 @@
 
 ## 이력
 
+### 2026-07-23 (27차) — BusinessType 도메인 재설계 배포 직후 롤백 (`turbom-server`)
+
+26차 배포 직후 실사례(가락시장 등)로 라이브 재검증하다가 심각한 회귀 발견: `LocationIdentity`가
+층/호/건물명 전부 없는 레코드를 `UNLOCATED`로 분류해 Unit 형성에서 제외하는데, 이 분류가
+25차(Unit 충돌감지/재분리)의 캐스케이드보다 먼저 실행되면서 25차가 원래 풀었던 문제가 재발함 —
+가락시장 unitCount 1488→0, AK플라자 691건 영향, DB 전체 41,169건 해당 패턴. 어떤 태스크별
+리뷰도 최종 전체범위 리뷰도 "두 기능을 합쳤을 때 원 동기 사례가 종단간으로 여전히 풀리는지"는
+확인 안 해서 못 잡음. 사용자 확인 후 즉시 `git revert --no-commit f0cd7aa..99bb609`(17개 커밋,
+충돌 없음)로 롤백, 배포 후 가락시장 1488·AK플라자 1461로 복구 확인. `backend-spec.md` §3.1/
+`api-spec.md`도 롤백 직전 스냅샷(`archive/2026-07-23/*.before-businesstype-impl`)으로 복원—
+운영 코드와 다시 일치. BusinessType 재설계 코드 자체는 git 이력(`029f6a1`~`99bb609`)에 남아있어
+폐기 아님, §17(의사결정-기록.md) 참고해 통합 지점만 고쳐 재시도 가능. 커밋: `turbom-server`
+`3317955`.
+
 ### 2026-07-23 (26차) — 업종(BusinessType) 도메인 재설계 구현 완료 (`turbom-server`)
 
 `NoStorefrontSubCategories`(정적 Set) + `TenancyQueryService`의 절차적 로직을 `BusinessType`
