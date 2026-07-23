@@ -10,22 +10,6 @@
 
 ## 이력
 
-### 2026-07-23 (26차) — 업종(BusinessType) 도메인 재설계 구현 완료 (`turbom-server`)
-
-`NoStorefrontSubCategories`(정적 Set) + `TenancyQueryService`의 절차적 로직을 `BusinessType`
-도메인 개념(`domain.businesstype`) + 협력자(`SitePartitioner`/`UnitGrouper`/`TenancyMerger`/
-`RelatedLicenseLinker`)로 재편. 집단급식소/위탁급식영업 관련 인허가 페어링, 담배소매업처럼
-매장은 있지만 상세주소가 없는 레코드의 위치미특정 분리(레코드 단위 판정, §9 반영),
-businessStatus/licensed_at 신뢰도 신호(`reliabilitySignal`)를 신규 지원. 구현 중 발견해 같이
-고친 것 2건: (1) `SiteQueryService.search()`의 기존 후보 필터 버그(units 비어있으면 무조건 제외 —
-UNLOCATED 축이 생기며 신흥동 등 실제 매장이 검색에서 누락되던 문제, `!units().isEmpty() ||
-!unlocatedRegistrations().isEmpty()`로 수정) — 새 버그가 아니라 원래 있던 버그가 이번 구현으로
-노출되어 같이 고친 것. (2) §16 Unit 충돌감지/재분리(`UnitGrouper`)가 `BusinessTypeRegistry`를
-몰라 관련 인허가 페어링을 겹침만으로 잘못 재분리하던 문제 수정(등록된 관련쌍은 겹침 검사 제외) —
-§16의 "알려진 한계"(창곡동 559-4 더조은병원/아워홈)가 이걸로 해소됨. 기존 98개 테스트 + 신규
-테스트 전부 통과. 커밋: `turbom-server` `a13e34d`. 상세: `의사결정-기록.md` §11·§16,
-`backend-spec.md` §3.1.
-
 ### 2026-07-22 (25차) — 대형 상가/시장에서 동시영업 다른 상호가 한 Unit으로 뭉치는 문제 수정 (`turbom-server`)
 
 실측 확인: 가락시장·AK플라자 지하1층·롯데백화점 지층·백현동 541 지하1층 등에서, 파싱된 층/호
