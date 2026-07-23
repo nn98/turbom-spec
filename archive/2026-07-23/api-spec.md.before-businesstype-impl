@@ -131,21 +131,7 @@
       "subCategory": "통신판매업",
       "licensedAt": "2019-06-04",
       "closedAt": null,
-      "status": "영업",
-      "reliabilitySignal": "CONFIRMED",
-      "reliabilitySignalReason": null
-    }
-  ],
-  "unlocatedRegistrations": [
-    {
-      "businessName": "씨유테스트점",
-      "category": "기타",
-      "subCategory": "담배소매업",
-      "licensedAt": "1999-01-15",
-      "closedAt": null,
-      "status": "영업",
-      "reliabilitySignal": "NEEDS_VERIFICATION",
-      "reliabilitySignalReason": "같은 자리에 더 늦게 시작한 다른 상호가 있음"
+      "status": "영업"
     }
   ],
   "disclaimer": {
@@ -176,7 +162,7 @@
 
 물리적 자리(Unit) 개념이 없는 업종의 인허가 이력. `units[]`와 배타적 — 한 레코드가 둘 다에 나타나지 않음.
 통신판매업·방문판매업 등 자가/사무실 주소로 신고 가능한 업종(원본 데이터에 층/호 정보가 구조적으로
-없는 업종, 판별 기준은 `backend-spec.md` §3.1 참고)이 여기 담긴다. `unitId`/`marketInfo`/
+없는 업종, 판별 기준은 `backend-spec.md` §3.1 무점포업종 분리 참고)이 여기 담긴다. `unitId`/`marketInfo`/
 통계 없음 — 물리적 자리가 아니므로.
 
 | 필드 | 타입 | 설명 |
@@ -187,22 +173,6 @@
 | licensedAt | string(date) | |
 | closedAt | string(date)\|null | |
 | status | string | 원본 영업상태명 원문(5버킷) |
-| reliabilitySignal | `"CONFIRMED"`\|`"NEEDS_VERIFICATION"` | **2026-07-23 신규** — 아래 `unlocatedRegistrations[]`와 동일 의미 |
-| reliabilitySignalReason | string\|null | **2026-07-23 신규** — `NEEDS_VERIFICATION`일 때만 사유 문자열, 그 외 null |
-
-### `unlocatedRegistrations[]` 필드 — **2026-07-23 신규**
-
-`noStorefrontRegistrations[]`와 같은 DTO 형태이지만 의미가 다르다 — 업종 자체는 실제 매장이
-있을 수 있음(예: 담배소매업)지만, 개별 레코드에 상세주소(층/호/건물명) 정보가 전혀 없어서
-어느 Unit에도 묶을 수 없는 경우가 담긴다(판단기준: `LocationIdentity`, 레코드 단위 판정 —
-업종 단위가 아니라서 담배소매업이라도 상세주소가 있는 레코드는 정상적으로 `units[]`에 들어간다).
-`units[]`와 배타적, `noStorefrontRegistrations[]`와도 배타적(한 레코드는 이 셋 중 딱 하나에만 들어간다).
-필드 구성은 위 표와 동일(businessName/category/subCategory/licensedAt/closedAt/status/reliabilitySignal/reliabilitySignalReason).
-
-`reliabilitySignal`이 `NEEDS_VERIFICATION`인 대표 사례: 담배소매업은 거리제한(50~100m) 때문에 폐업신고를
-미루는 "알박기" 관행과, 인허가 자체가 상호 변경과 무관하게 승계되는 경우가 흔해
-`licensedAt`이 실제 개업일보다 훨씬 이를 수 있다(`의사결정-기록.md` §9). 같은 자리에 더 늦게
-시작한 다른 상호가 있으면 이 신호가 붙는다 — 참고용 신호일 뿐 정밀 판정은 아님.
 
 - pnu 없음: 404 `SITE_NOT_FOUND`
 - units 정렬: 폐업 많은 순.
@@ -243,8 +213,6 @@
       "survivalMonths": 44,
       "closedAtEstimated": false,
       "enrichmentSource": "license_only",
-      "reliabilitySignal": "CONFIRMED",
-      "reliabilitySignalReason": null,
       "marketInfo": {
         "isPlaceholder": true,
         "leaseAreaSqm": 42.6,
@@ -292,12 +260,6 @@
       }
     }
   ],
-  "relatedLicenseGroups": [
-    {
-      "businessNames": ["더조은병원", "(주)아워홈 더조은병원성남점"],
-      "tenancies": []
-    }
-  ],
   "disclaimer": {
     "dataAsOf": "2026-07-04",
     "note": "인허가 신고 기준 데이터로 실제 영업 현황과 차이가 있을 수 있습니다."
@@ -307,21 +269,6 @@
 
 `unit.parsedFloor`/`parsedUnitNo`/`parseConfidence`(**2026-07-20 뒤늦게 문서화**): §②의 `units[]`와
 동일한 필드·의미(`parseConfidence`가 `HIGH`일 때만 신뢰).
-
-### `relatedLicenseGroups[]` 필드 — **2026-07-23 신규**
-
-같은 Unit 안에서 서로 다른 (category, subCategory) 인허가가 실제로는 같은 물건에 대한 관련
-인허가인 경우(예: 집단급식소/위탁급식영업 — 학교·병원이 자체 보유한 집단급식소 인허가와,
-외주 위탁급식업체의 위탁급식영업 인허가가 같은 급식실을 가리킴) 하나의 그룹으로 묶어 노출한다.
-관련쌍은 `BusinessTypeRegistry`에 미리 등록된 (category, subCategory) 쌍만 대상 — 임의 유사도
-추정 아님.
-
-| 필드 | 타입 | 설명 |
-|---|---|---|
-| businessNames | string[] | 묶인 상호명 목록 |
-| tenancies | `TenancyDto[]` | 묶인 이력들 — `timeline[]`과 같은 `TenancyDto` 형태(아래 표), 해당 그룹에 속하는 항목만 부분집합으로 |
-
-관련 없는 일반적인 경우 `relatedLicenseGroups`는 빈 배열이다.
 
 ### `timeline[]` 필드 (신규 부분)
 
@@ -333,8 +280,6 @@
 | industryDetail | string\|null | 상가API 세부업종. **있으면 이걸 우선 표시, 없으면 subCategory로 폴백**. 폐업 이력은 원천적으로 null |
 | survivalMonths | number\|null | **2026-07-17부터 null 가능.** `status`가 "영업"이 아닌데 `closedAt`이 null이면(원본에 종료일자가 없는 취소/말소/휴업 등) 계산 불가로 null — licensedAt~오늘로 계산하면 아직 영업 중인 것처럼 보이는 왜곡이 생기기 때문. 프론트는 null이면 "기간 미상" 등으로 표시할 것 |
 | enrichmentSource | `"sangga_api"`\|`"license_only"` | 보강 성공 여부 |
-| reliabilitySignal | `"CONFIRMED"`\|`"NEEDS_VERIFICATION"` | **2026-07-23 신규** — `licensed_at`이 실제 개업일과 다를 수 있음을 나타내는 참고 신호. 대표 사례: 담배소매업(§9). 대부분 업종은 항상 `CONFIRMED` |
-| reliabilitySignalReason | string\|null | **2026-07-23 신규** — `NEEDS_VERIFICATION`일 때만 사유, 그 외 null |
 | **marketInfo** | object | **[신규]** 아래 표 |
 
 세 업종 필드 구분: `category`(대분류, 필수) → `subCategory`(소분류, 필수) → `industryDetail`(상가API 세부, 영업중만·있으면 우선). 화면에선 category를 타임라인 기본 표시, 물건 상세 클릭 시 subCategory 노출, industryDetail 있으면 그걸 우선.
